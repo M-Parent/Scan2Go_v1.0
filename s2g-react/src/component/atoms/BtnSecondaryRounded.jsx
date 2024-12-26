@@ -1,6 +1,6 @@
 export function BtnSecondaryRounded(props) {
   return (
-    <button className=" hover:bg-green-500 hover:text-white hover:shadow-md border-2 border-green-500 rounded px-2.5 py-1.5 text-dark">
+    <button className=" hover:bg-green-500 hover:shadow-md border-2 rounded-2xl px-2.5 py-1.5">
       {props.name}
     </button>
   );

@@ -12,7 +12,7 @@ import { Nav } from "./component/molecules/Nav";
 export function App() {
   return (
     <>
-      <Nav />
+      {/* <Nav /> */}
       <div>
         <Routes>
           <Route path="/" element={<Home />} />
