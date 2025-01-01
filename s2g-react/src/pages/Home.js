@@ -1,74 +1,80 @@
 import { AddGlass } from "../component/molecules/glass/AddGlass";
 import { LogoGlass } from "../component/molecules/glass/LogoGlass";
 import { ProjectGlass } from "../component/molecules/glass/ProjectGlass";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { Modal } from "../component/molecules/modal/Modal";
-import { ModalFooter } from "../component/molecules/modal/ModalFooter";
-import { ModalTitle } from "../component/molecules/modal/ModalTitle";
-import { ModalInput } from "../component/molecules/modal/ModalInput";
+import { ModalAddProject } from "../component/molecules/modal/ModalAddProject";
+import { ModalEditProject } from "../component/molecules/modal/ModalEditProject";
+import { CardProject } from "../component/molecules/CardProject";
 
 export function Home() {
-  const project = 0;
-  const [showModal, setShowModal] = useState(false);
+  const project = 1;
+  const [showModalAddProject, setShowModalAddProject] = useState(false);
+  const [showModalEditProject, setShowModalEditProject] = useState(false);
 
   return (
     <>
-      <Fragment>
-        <LogoGlass alt="Logo of Scan2Go" />
-        {project === 0 ? (
-          <>
-            <div className="flex justify-center mt-20">
-              <button
-                className="transition hover:translate-y-1 hover:duration-700 hover:ease-in-out"
-                onClick={() => setShowModal(true)}
-              >
-                <AddGlass />
-              </button>
-            </div>
-            <Modal isVisible={showModal}>
-              {/* Title */}
-              <ModalTitle
-                title="ADD PROJECT"
-                onClose={() => setShowModal(false)}
-              />
-              {/* Body */}
-              <form>
-                <div className="pt-7 px-14">
-                  <ModalInput
-                    label="Project Name:"
-                    for="Project-name"
-                    type="text"
-                    placeholder="Server, Network..."
+      <LogoGlass alt="Logo of Scan2Go" />
+      {project === 0 ? (
+        <>
+          <div className="flex justify-center mt-32">
+            <button
+              className="transition hover:translate-y-1 hover:duration-700 hover:ease-in-out"
+              onClick={() => setShowModalAddProject(true)}
+            >
+              <AddGlass />
+            </button>
+          </div>
+          {/* Modal Add 1 */}
+          <Modal isVisible={showModalAddProject}>
+            <ModalAddProject
+              onCloseModal={() => setShowModalAddProject(false)}
+            />
+          </Modal>
+        </>
+      ) : (
+        <>
+          <div>
+            <ProjectGlass>
+              <div className="lg:flex lg:justify-around justify-center py-6 overflow-auto h-full scrollbar-custom">
+                <div className="grid justify-center xl:grid-cols-3 md:gap-12 gap-8  ">
+                  <button
+                    className="rounded-3xl"
+                    onClick={() => setShowModalAddProject(true)}
+                  >
+                    <AddGlass />
+                  </button>
+                  <CardProject
+                    href="Project"
+                    onEditClick={() => setShowModalEditProject(true)}
                   />
-                  <ModalInput
-                    label="Project Image:"
-                    for="Project-image"
-                    type="file"
-                    placeholder="Extention: .jpg, .png, .svg"
+                  <CardProject
+                    href="Project"
+                    onEditClick={() => setShowModalEditProject(true)}
                   />
-                </div>
-                {/* Footer */}
-                <ModalFooter onClose={() => setShowModal(false)} />
-              </form>
-            </Modal>
-          </>
-        ) : (
-          <>
-            <div className="">
-              <ProjectGlass />
-              <div className="flex justify-center">
-                <div className="">
-                  <div className="fixed">
-                    <button>
-                      <AddGlass />
-                    </button>
-                  </div>
+                  <CardProject />
+                  <CardProject />
+                  <CardProject />
+                  <CardProject />
+                  <CardProject />
                 </div>
               </div>
-            </div>
-          </>
-        )}
-      </Fragment>
+            </ProjectGlass>
+          </div>
+          {/* Modal Add 2 */}
+          <Modal isVisible={showModalAddProject}>
+            <ModalAddProject
+              onCloseModal={() => setShowModalAddProject(false)}
+            />
+          </Modal>
+          {/* Modal Edit */}
+          <Modal isVisible={showModalEditProject}>
+            <ModalEditProject
+              onCloseModalEditProject={() => setShowModalEditProject(false)}
+            />
+          </Modal>
+        </>
+      )}
     </>
   );
 }

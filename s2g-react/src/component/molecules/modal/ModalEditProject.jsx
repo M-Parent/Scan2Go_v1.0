@@ -3,20 +3,15 @@ import { ModalInputFile } from "./ModalInputFile";
 import { ModalTitle } from "./ModalTitle";
 import { ModalFooter } from "./ModalFooter";
 
-export function ModalAddProject({ onCloseModal, onCloseModal2 }) {
+export function ModalEditProject({ onCloseModalEditProject }) {
   return (
     <form>
       {/* Title */}
       <ModalTitle
-        title="ADD PROJECT"
-        onClose={() => {
-          if (onCloseModal) {
-            onCloseModal();
-          } else if (onCloseModal2) {
-            onCloseModal2();
-          }
-        }}
+        title="EDIT PROJECT"
+        onClose={() => onCloseModalEditProject()}
       />
+      {/* Body */}
       <div className="pt-7 md:px-14 px-7">
         <ModalInputText
           label="Project Name:"
@@ -25,17 +20,7 @@ export function ModalAddProject({ onCloseModal, onCloseModal2 }) {
         />
         <ModalInputFile label="Project Image:" for="Project-image" />
       </div>
-      {/* Footer */}
-      <ModalFooter
-        name="ADD"
-        onClose={() => {
-          if (onCloseModal) {
-            onCloseModal();
-          } else if (onCloseModal2) {
-            onCloseModal2();
-          }
-        }}
-      />
+      <ModalFooter name="Save" onClose={() => onCloseModalEditProject()} />
     </form>
   );
 }
