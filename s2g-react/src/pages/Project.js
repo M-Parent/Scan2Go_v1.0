@@ -269,7 +269,7 @@ export function Project() {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="bg-white/20 hover:bg-white/50 duration-300 transition ease-in-out">
+                      <tr className="hover:border hover:bg-white/20 duration-300 transition ease-in-out">
                         <td className="px-6 py-4 text-lg text-nowrap">
                           File Name
                         </td>
