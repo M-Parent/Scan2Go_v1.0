@@ -1,0 +1,8 @@
+# REACT
+
+npm install react router-dom 
+
+
+# EXPRESS
+
+npm install express cors mysql dotenv multer #nodemon
