@@ -1,5 +1,5 @@
 //import react-router-dom
-import { Route, Routes } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 //import page
 import { Home } from "./pages/Home";
 import { Project } from "./pages/Project";
@@ -13,7 +13,8 @@ export function App() {
       <div>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/Project" element={<Project />} />
+          <Route path="/project/:projectId" element={<Project />} />{" "}
+          {/* Dynamic route */}
           <Route path="/FileIndex" element={<FileIndex />} />
           <Route path="/Organisms" element={<Organisms />} />
         </Routes>

@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
+import API_BASE_URL from "../../api"; // Import your API URL
 
 export function CardProject({
-  href,
   projectName,
   projectImage,
   onEditClick,
   onDelete,
+  projectId,
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const cardRef = useRef(null);
@@ -24,12 +25,17 @@ export function CardProject({
       `Êtes-vous sûr de vouloir supprimer le projet ${projectName} ?`
     );
     if (confirmDelete) {
-      onDelete(); // Call the onDelete callback from the parent
-      setShowDropdown(false); // Close the dropdown after delete
+      onDelete();
+      setShowDropdown(false);
     }
   };
 
-  const imageUrl = `http://localhost:6301/uploads/${projectImage}`; // Chemin corrigé
+  const handleEdit = () => {
+    onEditClick(); // Call the function passed from the parent
+    setShowDropdown(false);
+  };
+
+  const imageUrl = `${API_BASE_URL}${projectImage}`;
 
   return (
     <div
@@ -39,7 +45,7 @@ export function CardProject({
     >
       <img
         className="absolute rounded-3xl w-full h-full object-cover"
-        src={imageUrl} // Utilisation de l'URL construite
+        src={imageUrl}
         alt={projectName}
       />
       <div className="absolute w-full h-full opacity-0 rounded-3xl hover:opacity-100 bg-black/50 duration-300 hover:border-slate-200 border">
@@ -60,7 +66,7 @@ export function CardProject({
             <ul className="px-2 py-1 divide-y">
               <div className="py-1 ">
                 <li
-                  onClick={onEditClick}
+                  onClick={handleEdit}
                   className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
                 >
                   Edit
@@ -79,9 +85,9 @@ export function CardProject({
               <div className="py-1">
                 <li
                   className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
-                  onClick={handleDelete} // <-- onClick est maintenant ici
+                  onClick={handleDelete}
                 >
-                  Delete {/* Le bouton n'est plus nécessaire */}
+                  Delete
                 </li>
               </div>
             </ul>

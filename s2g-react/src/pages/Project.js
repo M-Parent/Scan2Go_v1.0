@@ -1,12 +1,24 @@
 import { ModalAddSection } from "../component/molecules/modal/ModalAddSection";
 import { ModalEditProject } from "../component/molecules/modal/ModalEditProject";
-
 import { Modal } from "../component/molecules/modal/Modal";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AddGlass } from "../component/molecules/glass/AddGlass";
 import { SearchBarGlass } from "../component/molecules/glass/SearchBarGlass";
+import { useParams, useNavigate } from "react-router-dom"; // Import useParams and useNavigate
+import API_BASE_URL from "../api"; // Import your API URL
 
 export function Project() {
+  const { projectId } = useParams(); // Get project ID from URL
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  const dropdownRef = useRef(null); // Ref for the dropdown container
+  const dropdownRef2 = useRef(null); // Ref pour le deuxième dropdown
+
+  const [projectToEdit, setProjectToEdit] = useState(null); // State for project to edit
+
   const Section = 1;
 
   const [showModalAddSection, setShowModalAddSection] = useState(false);
@@ -33,22 +45,154 @@ export function Project() {
     setIsCollapsed(!isCollapsed);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        showDropdown &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setShowDropdown(false);
+      }
+      if (
+        showDropdown2 &&
+        dropdownRef2.current &&
+        !dropdownRef2.current.contains(event.target)
+      ) {
+        setShowDropdown2(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showDropdown, showDropdown2]); // Add showDropdown to the dependency array
+
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/projects/${projectId}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setProject(data);
+        } else {
+          setError("Failed to fetch project.");
+          console.error("Error fetching project:", response.status);
+        }
+      } catch (error) {
+        setError("A network error occurred.");
+        console.error("Connection error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProject();
+  }, [projectId]); // Fetch project on projectId change
+
+  const handleEditProject = () => {
+    setProjectToEdit(project); // Set the project to edit in state
+    setShowModalEditProject(true);
+    setShowDropdown(false); // Close the dropdown
+  };
+
+  const handleProjectUpdated = async (updatedProject) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/projects/${updatedProject.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedProject),
+        }
+      );
+
+      if (response.ok) {
+        setProject(updatedProject); // Update the project in the state
+        setShowModalEditProject(false);
+      } else {
+        console.error("Error updating project:", response.status);
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to update project");
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+      alert("A network error occurred while updating the project.");
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  if (!project) {
+    return <div>Project not found.</div>;
+  }
+
+  const handleBackClick = () => {
+    navigate("/"); // Navigate back to Home
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    const confirmDelete = window.confirm(
+      "Êtes-vous sûr de vouloir supprimer ce projet ?"
+    );
+    if (confirmDelete) {
+      try {
+        const response = await fetch(`/api/projects/${projectId}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          console.log("Projet supprimé avec succès");
+          navigate("/"); // Redirigez vers la page d'accueil
+        } else {
+          console.error(
+            "Erreur lors de la suppression du projet:",
+            response.status
+          );
+          const errorData = await response.json();
+          alert(errorData.error || "Échec de la suppression du projet");
+        }
+      } catch (error) {
+        console.error("Erreur de connexion:", error);
+        alert(
+          "Une erreur réseau s'est produite lors de la suppression du projet."
+        );
+      }
+    }
+  };
+
   return (
     <>
       {/* Nav back home + Title project */}
       <div className="flex p-6">
         <div className="me-auto">
-          <a href="/">
+          <button onClick={handleBackClick}>
+            {" "}
+            {/* Use a button for navigation */}
             <img
               className="Glassmorphgisme p-2"
               src="../img/Logo1picPNGZoom.png"
               width={48}
               alt="Logo Scan2Go"
             />
-          </a>
+          </button>
         </div>
         <div className="flex me-auto pe-12 items-center">
-          <p className="font-bungee text-4xl text-white">Project</p>
+          <p className="font-bungee text-4xl text-white">
+            {project.project_name}
+          </p>
         </div>
       </div>
       {/* Header */}
@@ -57,8 +201,8 @@ export function Project() {
         <div className="flex justify-center pb-5 md:pb-0">
           <img
             className="rounded-3xl md:w-56"
-            src="../img/Logo1pic.jpg"
-            alt="Logo Scan2Go "
+            src={`${API_BASE_URL}/${project.project_image}`}
+            alt={project.project_name}
           />
         </div>
         <div className="flex flex-col justify-around text-white w-full ps-5">
@@ -67,19 +211,26 @@ export function Project() {
               Section: <span className="font-bold">2</span>
             </p>
             <div className="relative">
-              <button>
+              <button onClick={handleButtonClick}>
                 <img
                   src="../img/icon/three-dots-vertical.svg"
                   alt="dots details icon"
-                  onClick={handleButtonClick}
+                  onClick={(event) => {
+                    // Add onClick to the image
+                    event.stopPropagation(); // Stop event bubbling
+                    handleButtonClick(); // Call your existing handler
+                  }}
                 />
               </button>
               {showDropdown && (
-                <div className="absolute top-7 right-3 Glassmorphgisme-noHover z-0 w-32">
+                <div
+                  className="absolute top-7 right-3 Glassmorphgisme-noHover z-0 w-32"
+                  ref={dropdownRef}
+                >
                   <ul className="px-2 py-1 divide-y">
                     <div className="py-1 ">
                       <li
-                        onClick={() => setShowModalEditProject(true)}
+                        onClick={handleEditProject} // Call handleEditProject
                         className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
                       >
                         Edit
@@ -96,7 +247,10 @@ export function Project() {
                       </li>
                     </div>
                     <div className="py-1">
-                      <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500">
+                      <li
+                        onClick={() => handleDeleteProject(project.id)}
+                        className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
+                      >
                         Delete
                       </li>
                     </div>
@@ -131,14 +285,18 @@ export function Project() {
           <Modal isVisible={showModalAddSection}>
             <ModalAddSection
               id="Add-section"
-              onCloseModalAddSection={() => setShowModalAddSection(false)}
+              onCloseModalAddSection={handleCloseModals}
             />
           </Modal>
           {/* Modal Edit */}
           <Modal isVisible={showModalEditProject}>
-            <ModalEditProject
-              onCloseModalEditProject={() => handleCloseModals()}
-            />
+            {projectToEdit && ( // Conditionally render the modal
+              <ModalEditProject
+                project={projectToEdit}
+                onCloseModalEditProject={handleCloseModals}
+                onProjectUpdated={handleProjectUpdated} // Pass the update handler
+              />
+            )}
           </Modal>
         </>
       ) : (
@@ -195,41 +353,51 @@ export function Project() {
                       width={20}
                     />
                   </span>
-                  <button onClick={handleButtonClick2}>
-                    <img
-                      src="../img/icon/three-dots-vertical.svg"
-                      alt="dots details icon"
-                    />
-                  </button>
-                  {showDropdown2 && (
-                    <div className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32">
-                      <ul className="px-2 py-1 divide-y">
-                        <div className="py-1 ">
-                          <li
-                            onClick={() => setShowModalEditProject(true)}
-                            className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
-                          >
-                            Edit
-                          </li>
-                        </div>
-                        <div className="py-1">
-                          <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
-                            Export File
-                          </li>
-                        </div>
-                        <div className="py-1">
-                          <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
-                            Export QR code
-                          </li>
-                        </div>
-                        <div className="py-1">
-                          <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500">
-                            Delete
-                          </li>
-                        </div>
-                      </ul>
-                    </div>
-                  )}
+                  <div className="relative">
+                    <button onClick={handleButtonClick2}>
+                      <img
+                        src="../img/icon/three-dots-vertical.svg"
+                        alt="dots details icon"
+                        onClick={(event) => {
+                          // Add onClick to the image
+                          event.stopPropagation(); // Stop event bubbling
+                          handleButtonClick2(); // Call your existing handler
+                        }}
+                      />
+                    </button>
+                    {showDropdown2 && (
+                      <div
+                        className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32"
+                        ref={dropdownRef2}
+                      >
+                        <ul className="px-2 py-1 divide-y">
+                          <div className="py-1 ">
+                            <li
+                              onClick={() => setShowModalEditProject(true)}
+                              className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
+                            >
+                              Edit
+                            </li>
+                          </div>
+                          <div className="py-1">
+                            <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                              Export File
+                            </li>
+                          </div>
+                          <div className="py-1">
+                            <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                              Export QR code
+                            </li>
+                          </div>
+                          <div className="py-1">
+                            <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500">
+                              Delete
+                            </li>
+                          </div>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -347,14 +515,18 @@ export function Project() {
           <Modal isVisible={showModalAddSection}>
             <ModalAddSection
               id="Add-section"
-              onCloseModalAddSection={() => setShowModalAddSection(false)}
+              onCloseModalAddSection={handleCloseModals}
             />
           </Modal>
           {/* Modal Edit */}
           <Modal isVisible={showModalEditProject}>
-            <ModalEditProject
-              onCloseModalEditProject={() => handleCloseModals()}
-            />
+            {projectToEdit && ( // Conditionally render the modal
+              <ModalEditProject
+                project={projectToEdit}
+                onCloseModalEditProject={handleCloseModals}
+                onProjectUpdated={handleProjectUpdated} // Pass the update handler
+              />
+            )}
           </Modal>
         </>
       )}

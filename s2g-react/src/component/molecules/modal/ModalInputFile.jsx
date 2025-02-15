@@ -19,6 +19,7 @@ export function ModalInputFile(props) {
           id={props.for}
           name={props.for} // Important pour le backend
           onChange={handleChange} // Utiliser une fonction interne pour gérer l'événement
+          ref={props.ref}
         />
       </div>
     </div>
