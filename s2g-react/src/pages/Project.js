@@ -19,7 +19,7 @@ export function Project() {
 
   const [projectToEdit, setProjectToEdit] = useState(null); // State for project to edit
 
-  const Section = 1;
+  const Section = 0;
 
   const [showModalAddSection, setShowModalAddSection] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -284,7 +284,7 @@ export function Project() {
           </div>
           <Modal isVisible={showModalAddSection}>
             <ModalAddSection
-              id="Add-section"
+              projectId={projectId}
               onCloseModalAddSection={handleCloseModals}
             />
           </Modal>
@@ -514,7 +514,7 @@ export function Project() {
           {/* Modal */}
           <Modal isVisible={showModalAddSection}>
             <ModalAddSection
-              id="Add-section"
+              projectId={projectId}
               onCloseModalAddSection={handleCloseModals}
             />
           </Modal>
