@@ -115,4 +115,162 @@ router.post("/addsections", upload.array("files"), async (req, res) => {
   }
 });
 
+// Route GET
+router.get("/:projectId", async (req, res) => {
+  const projectId = req.params.projectId;
+
+  try {
+    const [sections] = await db
+      .promise()
+      .query("SELECT * FROM section WHERE project_id = ?", [projectId]);
+
+    if (!sections || sections.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Aucune section trouvée pour ce projet." });
+    }
+
+    res.status(200).json(sections); // Send the sections data
+  } catch (error) {
+    console.error("Erreur lors de la récupération des sections:", error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+router.put("/:sectionId", async (req, res) => {
+  const sectionId = req.params.sectionId;
+  const { section_name: newSectionName } = req.body; // Get the new name from the request body
+
+  if (!newSectionName) {
+    return res.status(400).json({ error: "New section name is required." });
+  }
+
+  try {
+    // 1. Get the current section name and project name
+    const [section] = await db
+      .promise()
+      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
+        sectionId,
+      ]);
+
+    if (!section || section.length === 0) {
+      return res.status(404).json({ error: "Section not found." });
+    }
+
+    const currentSectionName = section[0].section_name;
+    const projectId = section[0].project_id;
+
+    const [project] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+
+    if (!project || project.length === 0) {
+      return res.status(404).json({ error: "Project not found." });
+    }
+    const projectName = project[0].project_name;
+
+    // 2. Rename the folder
+    const oldFolderPath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      projectName,
+      currentSectionName
+    );
+    const newFolderPath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      projectName,
+      newSectionName
+    );
+
+    if (fs.existsSync(oldFolderPath)) {
+      // Only rename if the folder exists
+      fs.renameSync(oldFolderPath, newFolderPath);
+    } else {
+      console.warn(`Folder ${oldFolderPath} does not exist. Skipping rename.`);
+    }
+
+    // 3. Update the database
+    const [result] = await db
+      .promise()
+      .query("UPDATE section SET section_name = ? WHERE id = ?", [
+        newSectionName,
+        sectionId,
+      ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Section not found for update." }); // Should not happen but good to check
+    }
+
+    // 4. Return the updated section data (optional but good practice)
+    const [updatedSection] = await db
+      .promise()
+      .query("SELECT * FROM section WHERE id = ?", [sectionId]);
+
+    res.status(200).json(updatedSection[0]); // Send the updated section data
+  } catch (error) {
+    console.error("Error updating section:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/:sectionId", async (req, res) => {
+  const sectionId = req.params.sectionId;
+
+  try {
+    const [section] = await db
+      .promise()
+      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
+        sectionId,
+      ]);
+
+    if (!section || section.length === 0) {
+      return res.status(404).json({ error: "Section not found." });
+    }
+
+    const sectionName = section[0].section_name;
+    const projectId = section[0].project_id;
+
+    const [project] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+
+    if (!project || project.length === 0) {
+      return res.status(404).json({ error: "Project not found." });
+    }
+    const projectName = project[0].project_name;
+
+    // 1. Delete the folder
+    const folderPath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      projectName,
+      sectionName
+    );
+
+    if (fs.existsSync(folderPath)) {
+      fs.rmSync(folderPath, { recursive: true }); // Use recursive: true to delete non-empty directories
+    } else {
+      console.warn(`Folder ${folderPath} does not exist. Skipping delete.`);
+    }
+
+    // 2. Delete the database entry
+    const [result] = await db
+      .promise()
+      .query("DELETE FROM section WHERE id = ?", [sectionId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Section not found for deletion." });
+    }
+
+    res.status(200).json({ message: "Section deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting section:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;

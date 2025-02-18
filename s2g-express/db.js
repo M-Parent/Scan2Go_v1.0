@@ -17,6 +17,7 @@ db.connect((err) => {
   }
   console.log("Connecté à la base de données MySQL!");
   createProjectTable();
+  createSectionTable();
 });
 
 // Create Table MYSQL
@@ -40,8 +41,6 @@ async function createProjectTable() {
   }
 }
 
-createProjectTable(); // Call the async function
-
 async function createSectionTable() {
   const createTableQuery = `
       CREATE TABLE IF NOT EXISTS section (
@@ -61,8 +60,6 @@ async function createSectionTable() {
     console.error("Erreur lors de la création de la table section :", err);
   }
 }
-
-createSectionTable(); // Appeler la fonction de création de la table "section"
 
 // Fonction pour fermer la connexion (à utiliser plus tard)
 function closeConnection() {

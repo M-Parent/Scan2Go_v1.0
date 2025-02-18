@@ -73,12 +73,12 @@ export function CardProject({
                 </li>
               </div>
               <div className="py-1">
-                <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                <li className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6">
                   Export File
                 </li>
               </div>
               <div className="py-1">
-                <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                <li className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6">
                   Export QR code
                 </li>
               </div>

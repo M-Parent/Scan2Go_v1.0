@@ -1,4 +1,6 @@
 import { ModalAddSection } from "../component/molecules/modal/ModalAddSection";
+import { ModalAddFile } from "../component/molecules/modal/ModalAddFile";
+import { ModalEditSection } from "../component/molecules/modal/ModalEditSection";
 import { ModalEditProject } from "../component/molecules/modal/ModalEditProject";
 import { Modal } from "../component/molecules/modal/Modal";
 import { useState, useEffect, useRef } from "react";
@@ -15,34 +17,83 @@ export function Project() {
   const navigate = useNavigate(); // Initialize useNavigate
 
   const dropdownRef = useRef(null); // Ref for the dropdown container
-  const dropdownRef2 = useRef(null); // Ref pour le deuxième dropdown
+  const dropdownRef2 = useRef({}); // Ref pour le deuxième dropdown
 
   const [projectToEdit, setProjectToEdit] = useState(null); // State for project to edit
 
-  const Section = 0;
+  const [sections, setSections] = useState([]); // Store sections data
+  const [sectionCollapse, setSectionCollapse] = useState({}); // Store collapse state for each section
+  const [sectionCount, setSectionCount] = useState(0);
 
   const [showModalAddSection, setShowModalAddSection] = useState(false);
+  const [showModalAddFile, setShowModalAddFile] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showDropdown2, setShowDropdown2] = useState(false);
+  const [showDropdown2, setShowDropdown2] = useState({});
   const [showModalEditProject, setShowModalEditProject] = useState(false);
+  const [showModalEditSection, setShowModalEditSection] = useState(false);
+  const [sectionToEdit, setSectionToEdit] = useState(null);
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const handleEditSection = (section) => {
+    setSectionToEdit(section);
+    setShowModalEditSection(true);
+    setShowDropdown2((prevState) => ({
+      ...prevState,
+      [section.id]: false, // Close the dropdown for this section
+    }));
+  };
 
   const handleButtonClick = () => {
     setShowDropdown(!showDropdown);
   };
 
-  const handleButtonClick2 = () => {
-    setShowDropdown2(!showDropdown2);
+  const handleButtonClick2 = (sectionId) => {
+    setShowDropdown2((prevState) => ({
+      ...prevState,
+      [sectionId]: !prevState[sectionId],
+    }));
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef2.current) {
+        // Check if dropdownRef2.current exists!
+        Object.keys(showDropdown2).forEach((sectionId) => {
+          const dropdownElement = dropdownRef2.current[sectionId];
+
+          if (
+            showDropdown2[sectionId] &&
+            dropdownElement &&
+            dropdownElement.contains(event.target)
+          ) {
+            return;
+          }
+
+          if (
+            showDropdown2[sectionId] &&
+            dropdownElement &&
+            !dropdownElement.contains(event.target)
+          ) {
+            setShowDropdown2((prevState) => ({
+              ...prevState,
+              [sectionId]: false,
+            }));
+          }
+        });
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showDropdown2]);
 
   const handleCloseModals = () => {
-    setShowDropdown(false); // Fermer le dropdown lors de la fermeture du modal
+    setShowDropdown(false);
+    setShowDropdown2(false);
     setShowModalEditProject(false);
-  };
-
-  const handleButtonClickColapse = () => {
-    setIsCollapsed(!isCollapsed);
+    setShowModalAddSection(false);
+    setShowModalAddFile(false);
   };
 
   useEffect(() => {
@@ -53,13 +104,6 @@ export function Project() {
         !dropdownRef.current.contains(event.target)
       ) {
         setShowDropdown(false);
-      }
-      if (
-        showDropdown2 &&
-        dropdownRef2.current &&
-        !dropdownRef2.current.contains(event.target)
-      ) {
-        setShowDropdown2(false);
       }
     };
 
@@ -98,6 +142,47 @@ export function Project() {
     setProjectToEdit(project); // Set the project to edit in state
     setShowModalEditProject(true);
     setShowDropdown(false); // Close the dropdown
+  };
+
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (projectId) {
+        // Only fetch if projectId is available
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/api/sections/${projectId}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setSections(data);
+            setSectionCount(data.length);
+            // Initialize collapse state for each section
+            const initialCollapse = {};
+            data.forEach((section) => {
+              initialCollapse[section.id] = false; // Initially collapsed
+            });
+            setSectionCollapse(initialCollapse);
+          } else {
+            console.error("Error fetching sections:", response.status);
+            setError("Failed to fetch sections.");
+          }
+        } catch (error) {
+          console.error("Connection error:", error);
+          setError("A network error occurred.");
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchSections();
+  }, [projectId]);
+
+  const handleSectionCollapse = (sectionId) => {
+    setSectionCollapse((prevState) => ({
+      ...prevState,
+      [sectionId]: !prevState[sectionId], // Toggle collapse state
+    }));
   };
 
   const handleProjectUpdated = async (updatedProject) => {
@@ -173,6 +258,48 @@ export function Project() {
     }
   };
 
+  const handleDeleteSection = async (sectionId) => {
+    const confirmDelete = window.confirm(
+      "Êtes-vous sûr de vouloir supprimer cette section ?"
+    );
+
+    if (confirmDelete) {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/sections/${sectionId}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (response.ok) {
+          console.log("Section deleted successfully");
+
+          // 1. Filter the sections array:
+          const updatedSections = sections.filter(
+            (section) => section.id !== sectionId
+          );
+
+          // 2. Update BOTH sections and sectionCount:
+          setSections(updatedSections);
+          setSectionCount(updatedSections.length); // Crucial update!
+
+          setShowDropdown2((prevState) => ({
+            ...prevState,
+            [sectionId]: false, // Close the dropdown for this section
+          }));
+        } else {
+          console.error("Error deleting section:", response.status);
+          const errorData = await response.json();
+          alert(errorData.error || "Failed to delete section");
+        }
+      } catch (error) {
+        console.error("Connection error:", error);
+        alert("A network error occurred while deleting the section.");
+      }
+    }
+  };
+
   return (
     <>
       {/* Nav back home + Title project */}
@@ -208,7 +335,8 @@ export function Project() {
         <div className="flex flex-col justify-around text-white w-full ps-5">
           <div className="flex">
             <p className="me-auto">
-              Section: <span className="font-bold">2</span>
+              Total Section:{" "}
+              <span className="font-bold ms-2">{sectionCount}</span>
             </p>
             <div className="relative">
               <button onClick={handleButtonClick}>
@@ -260,14 +388,14 @@ export function Project() {
             </div>
           </div>
           <div className="pb-2.5 ">
-            Uploaded File: <span className="font-bold">5</span>
+            Total Uploaded File: <span className="font-bold ms-2">5</span>
           </div>
           <div>
-            Space use: <span className="font-bold">30 Mb</span>
+            Total Space use: <span className="font-bold ms-2">30 Mb</span>
           </div>
         </div>
       </div>
-      {Section === 0 ? (
+      {sections === 0 ? (
         <>
           {/* Search bar */}
           <div className="my-8">
@@ -288,6 +416,7 @@ export function Project() {
               onCloseModalAddSection={handleCloseModals}
             />
           </Modal>
+
           {/* Modal Edit */}
           <Modal isVisible={showModalEditProject}>
             {projectToEdit && ( // Conditionally render the modal
@@ -323,192 +452,217 @@ export function Project() {
             </div>
           </div>
           {/* Section */}
-          <div className="relative lg:mx-48 mx-12 text-white my-16 ">
-            <div
-              className={`pb-3 duration-100 ${
-                isCollapsed
-                  ? " border-b-0 border-b-white/40"
-                  : "border-b-white/40 border-b"
-              }`}
-            >
-              <button
-                className={`absolute top-[8px] left-[-24px] transition-transform duration-300 ${
-                  isCollapsed ? "rotate-0" : "rotate-[-90deg]"
-                } `}
-                onClick={handleButtonClickColapse}
+          <div className="overflow-auto h-[450px] me-40 scrollbar-custom mt-10">
+            {sections.map((section) => (
+              <div
+                className="relative lg:ms-52 lg:me-6 mx-12 text-white my-16 "
+                key={section.id}
               >
-                <img
-                  src="../img//icon/chevron-down.svg"
-                  alt="Chevron-down icon"
-                  width={16}
-                />
-              </button>
-              <div className="flex justify-between">
-                <p className="text-2xl">Network1:</p>
-                <div className="flex ">
-                  <span className="Glassmorphgisme py-1 px-2.5">
-                    <img
-                      src="../img/icon/upload.svg"
-                      alt="Logo upload file"
-                      width={20}
-                    />
-                  </span>
-                  <div className="relative">
-                    <button onClick={handleButtonClick2}>
+                <div>
+                  <div
+                    className={`pb-3 duration-100 ${
+                      sectionCollapse[section.id]
+                    }`}
+                  >
+                    <button
+                      className={`absolute top-[8px] left-[-24px] transition-transform duration-300 ${
+                        sectionCollapse[section.id]
+                          ? "rotate-0"
+                          : "rotate-[-90deg]"
+                      } `}
+                      onClick={() => handleSectionCollapse(section.id)}
+                    >
                       <img
-                        src="../img/icon/three-dots-vertical.svg"
-                        alt="dots details icon"
-                        onClick={(event) => {
-                          // Add onClick to the image
-                          event.stopPropagation(); // Stop event bubbling
-                          handleButtonClick2(); // Call your existing handler
-                        }}
+                        src="../img//icon/chevron-down.svg"
+                        alt="Chevron-down icon"
+                        width={16}
                       />
                     </button>
-                    {showDropdown2 && (
-                      <div
-                        className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32"
-                        ref={dropdownRef2}
-                      >
-                        <ul className="px-2 py-1 divide-y">
-                          <div className="py-1 ">
-                            <li
-                              onClick={() => setShowModalEditProject(true)}
-                              className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
+                    <div className="flex justify-between">
+                      <p className="text-2xl">{section.section_name} :</p>
+                      <div className="flex ">
+                        <div>
+                          <button
+                            className="Glassmorphgisme py-1.5 px-3"
+                            onClick={() => setShowModalAddFile(true)}
+                          >
+                            <img
+                              src="../img/icon/upload.svg"
+                              alt="Logo upload file"
+                              width={20}
+                            />
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <button
+                            onClick={() => handleButtonClick2(section.id)}
+                          >
+                            <img
+                              className="ps-3.5"
+                              src="../img/icon/three-dots-vertical.svg"
+                              alt="dots details icon"
+                              onClick={(event) => {
+                                // Add onClick to the image
+                                event.stopPropagation(); // Stop event bubbling
+                                handleButtonClick2(section.id); // Call your existing handler
+                              }}
+                            />
+                          </button>
+                          {showDropdown2[section.id] && (
+                            <div
+                              className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32"
+                              ref={(el) =>
+                                (dropdownRef2.current[section.id] = el)
+                              }
                             >
-                              Edit
-                            </li>
-                          </div>
-                          <div className="py-1">
-                            <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
-                              Export File
-                            </li>
-                          </div>
-                          <div className="py-1">
-                            <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
-                              Export QR code
-                            </li>
-                          </div>
-                          <div className="py-1">
-                            <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500">
-                              Delete
-                            </li>
-                          </div>
-                        </ul>
+                              <ul className="px-2 py-1 divide-y">
+                                <div className="py-1 ">
+                                  <li
+                                    onClick={() => handleEditSection(section)}
+                                    className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
+                                  >
+                                    Edit
+                                  </li>
+                                </div>
+                                <div className="py-1">
+                                  <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                                    Export File
+                                  </li>
+                                </div>
+                                <div className="py-1">
+                                  <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                                    Export QR code
+                                  </li>
+                                </div>
+                                <div className="py-1">
+                                  <li
+                                    onClick={() =>
+                                      handleDeleteSection(section.id)
+                                    }
+                                    className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
+                                  >
+                                    Delete
+                                  </li>
+                                </div>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    </div>
+                  </div>
+
+                  {/* table section */}
+                  <div
+                    className={`mt-1.5 mx-1 sm:me-12  transition-all  duration-300 ease-in-out  ${
+                      sectionCollapse[section.id]
+                        ? "translate-y-auto opacity-100 " // When collapsed, translate 0 and show
+                        : "translate-y-[-20px] opacity-0 " // When not collapsed, translate -20px and hide
+                    }`}
+                  >
+                    <div
+                      className={`mx-1 sm:mx-5 relative w-full ${
+                        sectionCollapse[section.id] ? "" : " hidden"
+                      }`}
+                    >
+                      <div className=" overflow-x-auto">
+                        <table className=" w-full ">
+                          <thead className="text-xs uppercase border-b">
+                            <tr>
+                              <td className="px-6 py-3">Name</td>
+                              <th scope="col" className="px-6 py-3 text-nowrap">
+                                QR Code
+                              </th>
+                              <th scope="col" className="px-6 py-3">
+                                Share
+                              </th>
+                              <th scope="col" className="px-6 py-3">
+                                Tag
+                              </th>
+                              <th
+                                scope="col"
+                                className="flex justify-end pe-4 sm:pe-12 py-3"
+                              >
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="hover:border hover:bg-white/20 duration-300 transition ease-in-out">
+                              <td className="px-6 py-4 text-lg text-nowrap">
+                                File Name
+                              </td>
+                              <th className="px-6 py-4">
+                                <button>
+                                  <img
+                                    src="../img/icon/qr-code-scan.svg"
+                                    alt="Qr Code File"
+                                    width={24}
+                                  />
+                                </button>
+                              </th>
+                              <th className="px-6 py-4">
+                                <button>
+                                  <img
+                                    src="../img/icon/share.svg"
+                                    alt="Share File"
+                                    width={24}
+                                  />
+                                </button>
+                              </th>
+                              <th className="sm:flex sm:justify-center py-4">
+                                <div>
+                                  <span className="Glassmorphgisme-noHover text-xs px-2 py-0.5 me-1.5">
+                                    QGET
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="Glassmorphgisme-noHover text-xs px-2 me-1.5 py-0.5 text-nowrap">
+                                    Comd Team
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="Glassmorphgisme-noHover text-xs px-2 py-0.5 text-nowrap">
+                                    G6
+                                  </span>
+                                </div>
+                              </th>
+                              <th className="px-1 sm:px-6 sm:py-4">
+                                <div className="flex justify-end ">
+                                  <button>
+                                    <img
+                                      className="me-2"
+                                      src="../img/icon/file-arrow-down.svg"
+                                      alt="Download File"
+                                      width={24}
+                                    />
+                                  </button>
+                                  <button>
+                                    <img
+                                      className="me-2"
+                                      src="../img/icon/pencil-square.svg"
+                                      alt="Edit File"
+                                      width={24}
+                                    />
+                                  </button>
+                                  <button>
+                                    <img
+                                      src="../img/icon/trash.svg"
+                                      alt="Delete File"
+                                      width={24}
+                                    />
+                                  </button>
+                                </div>
+                              </th>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            {/* table section */}
-            <div
-              className={`mt-5 mx-1 sm:mx-5 transition-all  duration-300 ease-in-out  ${
-                isCollapsed
-                  ? "translate-y-auto opacity-100 " // When collapsed, translate 0 and show
-                  : "translate-y-[-20px] opacity-0 " // When not collapsed, translate -20px and hide
-              }`}
-            >
-              <div
-                className={`mx-1 sm:mx-5 relative w-full ${
-                  isCollapsed ? "" : " hidden"
-                }`}
-              >
-                <div className=" overflow-x-auto">
-                  <table className=" w-full ">
-                    <thead className="text-xs uppercase border-b">
-                      <tr>
-                        <td className="px-6 py-3">Name</td>
-                        <th scope="col" className="px-6 py-3 text-nowrap">
-                          QR Code
-                        </th>
-                        <th scope="col" className="px-6 py-3">
-                          Share
-                        </th>
-                        <th scope="col" className="px-6 py-3">
-                          Tag
-                        </th>
-                        <th
-                          scope="col"
-                          className="flex justify-end pe-4 sm:pe-10 py-3"
-                        >
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="hover:border hover:bg-white/20 duration-300 transition ease-in-out">
-                        <td className="px-6 py-4 text-lg text-nowrap">
-                          File Name
-                        </td>
-                        <th className="px-6 py-4">
-                          <button>
-                            <img
-                              src="../img/icon/qr-code-scan.svg"
-                              alt="Qr Code File"
-                              width={24}
-                            />
-                          </button>
-                        </th>
-                        <th className="px-6 py-4">
-                          <button>
-                            <img
-                              src="../img/icon/share.svg"
-                              alt="Share File"
-                              width={24}
-                            />
-                          </button>
-                        </th>
-                        <th className="sm:flex sm:justify-center py-4">
-                          <div>
-                            <span className="Glassmorphgisme-noHover text-xs px-2 py-0.5 me-1.5">
-                              QGET
-                            </span>
-                          </div>
-                          <div>
-                            <span className="Glassmorphgisme-noHover text-xs px-2 me-1.5 py-0.5 text-nowrap">
-                              Comd Team
-                            </span>
-                          </div>
-                          <div>
-                            <span className="Glassmorphgisme-noHover text-xs px-2 py-0.5 text-nowrap">
-                              G6
-                            </span>
-                          </div>
-                        </th>
-                        <th className="px-1 sm:px-6 sm:py-4">
-                          <div className="flex justify-end ">
-                            <button>
-                              <img
-                                className="me-1"
-                                src="../img/icon/file-arrow-down.svg"
-                                alt="Download File"
-                                width={24}
-                              />
-                            </button>
-                            <button>
-                              <img
-                                className="me-1"
-                                src="../img/icon/pencil-square.svg"
-                                alt="Edit File"
-                                width={24}
-                              />
-                            </button>
-                            <button>
-                              <img
-                                src="../img/icon/trash.svg"
-                                alt="Delete File"
-                                width={24}
-                              />
-                            </button>
-                          </div>
-                        </th>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
           {/* Modal */}
@@ -517,6 +671,27 @@ export function Project() {
               projectId={projectId}
               onCloseModalAddSection={handleCloseModals}
             />
+          </Modal>
+          {/* Modal Add File */}
+          <Modal isVisible={showModalAddFile}>
+            <ModalAddFile onCloseModalAddFile={handleCloseModals} />
+          </Modal>
+          <Modal isVisible={showModalEditSection}>
+            {sectionToEdit && (
+              <ModalEditSection
+                section={sectionToEdit} // Pass the section to edit
+                onCloseModalEditSection={() => setShowModalEditSection(false)}
+                // Add a prop for handling section updates, similar to handleProjectUpdated
+                onSectionUpdated={(updatedSection) => {
+                  // Implement logic to update the section in the sections state
+                  const updatedSections = sections.map((s) =>
+                    s.id === updatedSection.id ? updatedSection : s
+                  );
+                  setSections(updatedSections);
+                  setShowModalEditSection(false);
+                }}
+              />
+            )}
           </Modal>
           {/* Modal Edit */}
           <Modal isVisible={showModalEditProject}>

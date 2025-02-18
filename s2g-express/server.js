@@ -5,6 +5,7 @@ const path = require("path");
 const { db, closeConnection } = require("./db"); // Importation destructurée
 const projectRoutes = require("./routes/projectRoutes");
 const sectionsRoutes = require("./routes/sectionsRoutes");
+const filesRoutes = require("./routes/filesRoutes");
 
 const app = express();
 const port = process.env.PORT_EXPRESS || 6301;

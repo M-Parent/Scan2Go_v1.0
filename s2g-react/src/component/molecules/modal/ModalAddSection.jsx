@@ -35,7 +35,7 @@ export function ModalAddSection({ id, onCloseModalAddSection, projectId }) {
   };
 
   const handleAddSection = () => {
-    if (sectionNames.length < 20) {
+    if (sectionNames.length < 50) {
       setSectionNames([...sectionNames, { name: "", error: "" }]);
     }
   };
@@ -111,10 +111,7 @@ export function ModalAddSection({ id, onCloseModalAddSection, projectId }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <ModalTitle
-        title="Add Section"
-        onClose={() => onCloseModalAddSection()}
-      />
+      <ModalTitle title="Add Section" onClose={onCloseModalAddSection} />
       <div className="pt-7 md:px-14 px-7">
         <div className="mt-5 flex items-center">
           <label className="me-4" htmlFor={id}>
@@ -126,7 +123,7 @@ export function ModalAddSection({ id, onCloseModalAddSection, projectId }) {
             <button
               type="button"
               onClick={decrementCount}
-              className="bg-white/40 hover:bg-white/70 boder-white border-y border-s text-gray-800 font-bold px-3 py-1 rounded-s-xl"
+              className="bg-white/30 hover:bg-white/50 boder-white border-y border-s text-white font-bold px-3 py-1 rounded-s-xl"
             >
               -
             </button>
@@ -136,7 +133,7 @@ export function ModalAddSection({ id, onCloseModalAddSection, projectId }) {
             <button
               type="button"
               onClick={incrementCount}
-              className="bg-white/40 hover:bg-white/70 boder-white border-y border-e text-gray-800 font-bold px-3 py-1 rounded-e-xl"
+              className="bg-white/30 hover:bg-white/50 boder-white border-y border-e text-white font-bold px-3 py-1 rounded-e-xl"
             >
               +
             </button>
@@ -189,7 +186,7 @@ export function ModalAddSection({ id, onCloseModalAddSection, projectId }) {
           ))}
         </div>
       </div>
-      <ModalFooter name="ADD" />
+      <ModalFooter name="ADD" onClose={onCloseModalAddSection} />
     </form>
   );
 }
