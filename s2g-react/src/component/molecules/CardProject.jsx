@@ -74,7 +74,7 @@ export function CardProject({
               </div>
               <div className="py-1">
                 <li className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6">
-                  Export File
+                  Export Project
                 </li>
               </div>
               <div className="py-1">

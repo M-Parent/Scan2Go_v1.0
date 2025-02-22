@@ -15,6 +15,7 @@ export function SearchBarGlass() {
             <img
               className="absolute top-[5px] right-[5px] bg-white/30 rounded-full px-3 py-1.5"
               src="../img/icon/search.svg"
+              alt="Search-icon"
             />
           </button>
         </div>

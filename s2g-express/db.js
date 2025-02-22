@@ -3,10 +3,10 @@ const mysql = require("mysql2");
 
 // Configuration de la connexion à la base de données
 const db = mysql.createConnection({
-  host: process.env.MYSQL_HOST || "localhost", // Hôte de la base de données
-  user: process.env.MYSQL_USER, // Nom d'utilisateur
-  password: process.env.MYSQL_PASSWORD, // Mot de passe
-  database: process.env.MYSQL_DATABASE, // Nom de la base de données
+  host: process.env.MYSQL_HOST || "s2g-db",
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
 });
 
 // Connection DB log
@@ -18,46 +18,90 @@ db.connect((err) => {
   console.log("Connecté à la base de données MySQL!");
   createProjectTable();
   createSectionTable();
+  createFileTable();
+  createTagTable();
 });
 
 // Create Table MYSQL
 async function createProjectTable() {
-  // Make it async
   const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS project (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        project_name VARCHAR(255),
-        project_image VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      );
-    `;
+    CREATE TABLE IF NOT EXISTS project (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      project_name VARCHAR(255),
+      project_image VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+  `;
 
   try {
-    const [results] = await db.promise().query(createTableQuery); // Use .promise() and await
+    const [results] = await db.promise().query(createTableQuery);
     console.log('Table "project" créée ou déjà existante.');
   } catch (err) {
-    console.error("Erreur lors de la création de la table :", err);
+    console.error("Erreur lors de la création de la table project:", err);
   }
 }
 
 async function createSectionTable() {
   const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS section (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          project_id INT,
-          section_name VARCHAR(255),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE -- Clé étrangère et relation
-      );
+    CREATE TABLE IF NOT EXISTS section (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      project_id INT,
+      section_name VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+    );
   `;
 
   try {
     const [results] = await db.promise().query(createTableQuery);
     console.log('Table "section" créée ou déjà existante.');
   } catch (err) {
-    console.error("Erreur lors de la création de la table section :", err);
+    console.error("Erreur lors de la création de la table section:", err);
+  }
+}
+
+async function createFileTable() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS file (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      section_id INT,
+      name VARCHAR(255),
+      url_qr_code VARCHAR(255),
+      path_file VARCHAR(255),
+      path_pdf VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (section_id) REFERENCES section(id) ON DELETE CASCADE
+    );
+  `;
+
+  try {
+    const [results] = await db.promise().query(createTableQuery);
+    console.log('Table "file" créée ou déjà existante.');
+  } catch (err) {
+    console.error("Erreur lors de la création de la table file:", err);
+  }
+}
+
+async function createTagTable() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS tag (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      file_id INT,
+      tag_name VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (file_id) REFERENCES file(id) ON DELETE CASCADE
+    );
+  `;
+
+  try {
+    const [results] = await db.promise().query(createTableQuery);
+    console.log('Table "tag" créée ou déjà existante.');
+  } catch (err) {
+    console.error("Erreur lors de la création de la table tag:", err);
   }
 }
 

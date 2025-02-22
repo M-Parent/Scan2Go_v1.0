@@ -8,7 +8,7 @@ const sectionsRoutes = require("./routes/sectionsRoutes");
 const filesRoutes = require("./routes/filesRoutes");
 
 const app = express();
-const port = process.env.PORT_EXPRESS || 6301;
+const port = 6301;
 
 if (
   !process.env.MYSQL_HOST ||
@@ -28,12 +28,14 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/projects", projectRoutes);
 app.use("/api/sections", sectionsRoutes);
+app.use("/api/uploadFile", filesRoutes);
 
 // Gestion des erreurs globales (middleware d'erreur)
 app.use((err, req, res, next) => {

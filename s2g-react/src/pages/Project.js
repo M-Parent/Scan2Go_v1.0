@@ -1,11 +1,13 @@
 import { ModalAddSection } from "../component/molecules/modal/ModalAddSection";
-import { ModalAddFile } from "../component/molecules/modal/ModalAddFile";
 import { ModalEditSection } from "../component/molecules/modal/ModalEditSection";
 import { ModalEditProject } from "../component/molecules/modal/ModalEditProject";
+import { ModalEditFile } from "../component/molecules/modal/ModalEditFile";
 import { Modal } from "../component/molecules/modal/Modal";
 import { useState, useEffect, useRef } from "react";
 import { AddGlass } from "../component/molecules/glass/AddGlass";
+import { Table } from "../component/organisms/Table";
 import { SearchBarGlass } from "../component/molecules/glass/SearchBarGlass";
+import { ModalAddFile } from "../component/molecules/modal/ModalAddFile";
 import { useParams, useNavigate } from "react-router-dom"; // Import useParams and useNavigate
 import API_BASE_URL from "../api"; // Import your API URL
 
@@ -24,7 +26,9 @@ export function Project() {
   const [sections, setSections] = useState([]); // Store sections data
   const [sectionCollapse, setSectionCollapse] = useState({}); // Store collapse state for each section
   const [sectionCount, setSectionCount] = useState(0);
+  const [totalFilesCount, setTotalFilesCount] = useState(0);
 
+  const [showModalEditFile, setShowModalEditFile] = useState(false);
   const [showModalAddSection, setShowModalAddSection] = useState(false);
   const [showModalAddFile, setShowModalAddFile] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -32,6 +36,71 @@ export function Project() {
   const [showModalEditProject, setShowModalEditProject] = useState(false);
   const [showModalEditSection, setShowModalEditSection] = useState(false);
   const [sectionToEdit, setSectionToEdit] = useState(null);
+  const [selectedSection, setSelectedSection] = useState(null);
+
+  const [totalFileSize, setTotalFileSize] = useState(0);
+  const [sectionFiles, setSectionFiles] = useState({});
+
+  const fetchSectionFiles = async (sectionId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/uploadFile/files/${sectionId}`
+      );
+      if (response.ok) {
+        const files = await response.json();
+        setSectionFiles((prevFiles) => ({
+          ...prevFiles,
+          [sectionId]: files,
+        }));
+      } else {
+        console.error("Failed to fetch files:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  };
+
+  const calculateTotalFileSize = () => {
+    let totalSize = 0;
+    Object.values(sectionFiles).forEach((files) => {
+      if (files) {
+        files.forEach((file) => {
+          totalSize += file.size || 0;
+        });
+      }
+    });
+    setTotalFileSize(totalSize);
+  };
+
+  useEffect(() => {
+    calculateTotalFileSize();
+  }, [sectionFiles]);
+
+  useEffect(() => {
+    sections.forEach((section) => {
+      fetchSectionFiles(section.id);
+    });
+  }, [sections]);
+
+  useEffect(() => {
+    const updateTotalFilesCount = () => {
+      let count = 0;
+      Object.values(sectionFiles).forEach((files) => {
+        if (files) {
+          count += files.length;
+        }
+      });
+      setTotalFilesCount(count);
+    };
+    updateTotalFilesCount();
+  }, [sectionFiles]);
+
+  useEffect(() => {
+    // Récupérer les fichiers pour chaque section
+    sections.forEach((section) => {
+      fetchSectionFiles(section.id);
+    });
+  }, [sections]);
 
   const handleEditSection = (section) => {
     setSectionToEdit(section);
@@ -90,10 +159,11 @@ export function Project() {
 
   const handleCloseModals = () => {
     setShowDropdown(false);
-    setShowDropdown2(false);
+    setShowDropdown2({});
     setShowModalEditProject(false);
     setShowModalAddSection(false);
     setShowModalAddFile(false);
+    setShowModalEditFile(false);
   };
 
   useEffect(() => {
@@ -366,7 +436,7 @@ export function Project() {
                     </div>
                     <div className="py-1">
                       <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
-                        Export File
+                        Export Project
                       </li>
                     </div>
                     <div className="py-1">
@@ -388,10 +458,14 @@ export function Project() {
             </div>
           </div>
           <div className="pb-2.5 ">
-            Total Uploaded File: <span className="font-bold ms-2">5</span>
+            Total Uploaded File:{" "}
+            <span className="font-bold ms-2">{totalFilesCount}</span>
           </div>
           <div>
-            Total Space use: <span className="font-bold ms-2">30 Mb</span>
+            Total Space use:{" "}
+            <span className="font-bold ms-2">
+              {(totalFileSize / (1024 * 1024)).toFixed(2)} Mb
+            </span>
           </div>
         </div>
       </div>
@@ -431,68 +505,75 @@ export function Project() {
       ) : (
         <>
           {/* Search + Add */}
-          <div className="lg:mx-48 mx-12 text-white sm:flex my-8">
-            <div className="md:ms-auto ms-0 md:ps-24 ">
+          <div className="lg:mx-48 mx-12 text-white sm:flex my-4">
+            <div className="md:ms-auto ms-0 md:ps-24">
               <SearchBarGlass />
             </div>
             <div className="sm:ms-auto flex justify-center mt-5 sm:mt-0">
-              <div>
-                <button
-                  onClick={() => setShowModalAddSection(true)}
-                  className="flex Glassmorphgisme px-3 py-1.5 font-bungee me-auto"
-                >
-                  <img
-                    src="../img/icon/plus-circle.svg"
-                    alt="Plus icon"
-                    width={24}
-                  />
-                  <div className="flex items-center ms-1.5">Add</div>
-                </button>
-              </div>
+              <button
+                onClick={() => setShowModalAddSection(true)}
+                className="flex Glassmorphgisme px-3 py-1.5 font-bungee me-auto"
+              >
+                <img
+                  src="../img/icon/plus-circle.svg"
+                  alt="Plus icon"
+                  width={24}
+                />
+                <div className="flex items-center ms-1.5">Add</div>
+              </button>
             </div>
           </div>
+
           {/* Section */}
-          <div className="overflow-auto h-[450px] me-40 scrollbar-custom mt-10">
+          {/* div stiky top  */}
+          <div className="overflow-y-auto h-[530px] lg:me-40 me-4 scrollbar-custom">
             {sections.map((section) => (
               <div
-                className="relative lg:ms-52 lg:me-6 mx-12 text-white my-16 "
                 key={section.id}
+                className="relative lg:ms-52 lg:me-6 mx-12 text-white my-16 "
               >
-                <div>
+                <div className="">
                   <div
                     className={`pb-3 duration-100 ${
                       sectionCollapse[section.id]
                     }`}
+                    onClick={() => handleSectionCollapse(section.id)}
                   >
                     <button
                       className={`absolute top-[8px] left-[-24px] transition-transform duration-300 ${
                         sectionCollapse[section.id]
                           ? "rotate-0"
                           : "rotate-[-90deg]"
-                      } `}
-                      onClick={() => handleSectionCollapse(section.id)}
+                      }`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleSectionCollapse(section.id);
+                      }}
                     >
                       <img
-                        src="../img//icon/chevron-down.svg"
+                        src="../img/icon/chevron-down.svg"
                         alt="Chevron-down icon"
                         width={16}
                       />
                     </button>
-                    <div className="flex justify-between">
+
+                    <div className="flex justify-between ">
                       <p className="text-2xl">{section.section_name} :</p>
-                      <div className="flex ">
-                        <div>
-                          <button
-                            className="Glassmorphgisme py-1.5 px-3"
-                            onClick={() => setShowModalAddFile(true)}
-                          >
-                            <img
-                              src="../img/icon/upload.svg"
-                              alt="Logo upload file"
-                              width={20}
-                            />
-                          </button>
-                        </div>
+                      <div className="flex">
+                        <button
+                          className="Glassmorphgisme py-1.5 px-3"
+                          onClick={() => {
+                            setSelectedSection(section);
+                            setShowModalAddFile(true);
+                          }}
+                        >
+                          <img
+                            src="../img/icon/upload.svg"
+                            alt="Logo upload file"
+                            width={20}
+                          />
+                        </button>
+
                         <div className="relative">
                           <button
                             onClick={() => handleButtonClick2(section.id)}
@@ -502,12 +583,12 @@ export function Project() {
                               src="../img/icon/three-dots-vertical.svg"
                               alt="dots details icon"
                               onClick={(event) => {
-                                // Add onClick to the image
-                                event.stopPropagation(); // Stop event bubbling
-                                handleButtonClick2(section.id); // Call your existing handler
+                                event.stopPropagation();
+                                handleButtonClick2(section.id);
                               }}
                             />
                           </button>
+
                           {showDropdown2[section.id] && (
                             <div
                               className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32"
@@ -519,27 +600,27 @@ export function Project() {
                                 <div className="py-1 ">
                                   <li
                                     onClick={() => handleEditSection(section)}
-                                    className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6 "
+                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
                                   >
                                     Edit
                                   </li>
                                 </div>
-                                <div className="py-1">
-                                  <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
-                                    Export File
+                                <div className="py-1 ">
+                                  <li className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6">
+                                    Export Section
                                   </li>
                                 </div>
-                                <div className="py-1">
-                                  <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                                <div className="py-1 ">
+                                  <li className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6">
                                     Export QR code
                                   </li>
                                 </div>
-                                <div className="py-1">
+                                <div className="py-1 ">
                                   <li
                                     onClick={() =>
                                       handleDeleteSection(section.id)
                                     }
-                                    className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
+                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
                                   >
                                     Delete
                                   </li>
@@ -552,111 +633,29 @@ export function Project() {
                     </div>
                   </div>
 
-                  {/* table section */}
+                  {/* Table section */}
                   <div
-                    className={`mt-1.5 mx-1 sm:me-12  transition-all  duration-300 ease-in-out  ${
+                    className={`mt-1.5 mx-1 sm:me-12 transition-all duration-300 ease-in-out ${
                       sectionCollapse[section.id]
-                        ? "translate-y-auto opacity-100 " // When collapsed, translate 0 and show
-                        : "translate-y-[-20px] opacity-0 " // When not collapsed, translate -20px and hide
+                        ? "translate-y-auto opacity-100"
+                        : "translate-y-[-20px] opacity-0"
                     }`}
                   >
                     <div
                       className={`mx-1 sm:mx-5 relative w-full ${
-                        sectionCollapse[section.id] ? "" : " hidden"
+                        sectionCollapse[section.id] ? "" : "hidden"
                       }`}
                     >
-                      <div className=" overflow-x-auto">
-                        <table className=" w-full ">
-                          <thead className="text-xs uppercase border-b">
-                            <tr>
-                              <td className="px-6 py-3">Name</td>
-                              <th scope="col" className="px-6 py-3 text-nowrap">
-                                QR Code
-                              </th>
-                              <th scope="col" className="px-6 py-3">
-                                Share
-                              </th>
-                              <th scope="col" className="px-6 py-3">
-                                Tag
-                              </th>
-                              <th
-                                scope="col"
-                                className="flex justify-end pe-4 sm:pe-12 py-3"
-                              >
-                                Action
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="hover:border hover:bg-white/20 duration-300 transition ease-in-out">
-                              <td className="px-6 py-4 text-lg text-nowrap">
-                                File Name
-                              </td>
-                              <th className="px-6 py-4">
-                                <button>
-                                  <img
-                                    src="../img/icon/qr-code-scan.svg"
-                                    alt="Qr Code File"
-                                    width={24}
-                                  />
-                                </button>
-                              </th>
-                              <th className="px-6 py-4">
-                                <button>
-                                  <img
-                                    src="../img/icon/share.svg"
-                                    alt="Share File"
-                                    width={24}
-                                  />
-                                </button>
-                              </th>
-                              <th className="sm:flex sm:justify-center py-4">
-                                <div>
-                                  <span className="Glassmorphgisme-noHover text-xs px-2 py-0.5 me-1.5">
-                                    QGET
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="Glassmorphgisme-noHover text-xs px-2 me-1.5 py-0.5 text-nowrap">
-                                    Comd Team
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="Glassmorphgisme-noHover text-xs px-2 py-0.5 text-nowrap">
-                                    G6
-                                  </span>
-                                </div>
-                              </th>
-                              <th className="px-1 sm:px-6 sm:py-4">
-                                <div className="flex justify-end ">
-                                  <button>
-                                    <img
-                                      className="me-2"
-                                      src="../img/icon/file-arrow-down.svg"
-                                      alt="Download File"
-                                      width={24}
-                                    />
-                                  </button>
-                                  <button>
-                                    <img
-                                      className="me-2"
-                                      src="../img/icon/pencil-square.svg"
-                                      alt="Edit File"
-                                      width={24}
-                                    />
-                                  </button>
-                                  <button>
-                                    <img
-                                      src="../img/icon/trash.svg"
-                                      alt="Delete File"
-                                      width={24}
-                                    />
-                                  </button>
-                                </div>
-                              </th>
-                            </tr>
-                          </tbody>
-                        </table>
+                      <div className="overflow-x-auto">
+                        <Table
+                          sectionFiles={sectionFiles}
+                          setSectionFiles={setSectionFiles}
+                          section={section}
+                          project={project} // Ajout de project
+                          fetchSectionFiles={fetchSectionFiles} // Ajout de fetchSectionFiles
+                          setSelectedSection={setSelectedSection} // Ajout de setSelectedSection
+                          handleCloseModals={handleCloseModals} // Ajout de handleCloseModals
+                        />
                       </div>
                     </div>
                   </div>
@@ -664,7 +663,6 @@ export function Project() {
               </div>
             ))}
           </div>
-
           {/* Modal */}
           <Modal isVisible={showModalAddSection}>
             <ModalAddSection
@@ -674,7 +672,29 @@ export function Project() {
           </Modal>
           {/* Modal Add File */}
           <Modal isVisible={showModalAddFile}>
-            <ModalAddFile onCloseModalAddFile={handleCloseModals} />
+            {selectedSection && (
+              <ModalAddFile
+                onCloseModalAddFile={handleCloseModals}
+                projectName={project.project_name}
+                sectionName={selectedSection.section_name}
+                onFileUploaded={() => {
+                  fetchSectionFiles(selectedSection.id); // Appel de la fonction de fetch ici
+                }}
+              />
+            )}
+          </Modal>
+          {/* Modal Edit File */}
+          <Modal isVisible={showModalEditFile}>
+            {selectedSection && (
+              <ModalEditFile
+                onCloseModalEditFile={handleCloseModals}
+                projectName={project.project_name}
+                sectionName={selectedSection.section_name}
+                onFileUploaded={() => {
+                  fetchSectionFiles(selectedSection.id);
+                }}
+              />
+            )}
           </Modal>
           <Modal isVisible={showModalEditSection}>
             {sectionToEdit && (
