@@ -4,7 +4,7 @@ export function SearchBarGlass() {
       <div className="flex justify-center">
         <div className="relative">
           <input
-            className=" sm:w-96 w-72 mx-auto rounded-full bg-white/30 px-3 py-1.5 text-base border-white border text-white placeholder:text-white/70 focus:outline focus:outline-2  focus:-outline-offset-1 focus:outline-indigo-600 sm:text-sm/6"
+            className=" sm:w-[500px] w-72 mx-auto rounded-full bg-white/30 px-3 py-1.5 text-base border-white border text-white placeholder:text-white/70 focus:outline focus:outline-2  focus:-outline-offset-1 focus:outline-indigo-600 sm:text-sm/6"
             type="text"
             id="search-bar"
             name="search-bar"

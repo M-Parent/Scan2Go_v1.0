@@ -1,15 +1,64 @@
 import { ModalAddSection } from "../component/molecules/modal/ModalAddSection";
 import { ModalEditSection } from "../component/molecules/modal/ModalEditSection";
 import { ModalEditProject } from "../component/molecules/modal/ModalEditProject";
-import { ModalEditFile } from "../component/molecules/modal/ModalEditFile";
 import { Modal } from "../component/molecules/modal/Modal";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AddGlass } from "../component/molecules/glass/AddGlass";
 import { Table } from "../component/organisms/Table";
 import { SearchBarGlass } from "../component/molecules/glass/SearchBarGlass";
 import { ModalAddFile } from "../component/molecules/modal/ModalAddFile";
 import { useParams, useNavigate } from "react-router-dom"; // Import useParams and useNavigate
 import API_BASE_URL from "../api"; // Import your API URL
+
+export const exportProjectFiles = async (projectId, projectName) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/export-project-files/${projectId}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${projectName}_Project_File.zip`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  } catch (error) {
+    console.error("Error exporting project files:", error);
+    alert("Failed to export project files.");
+  }
+};
+
+export const exportProjectQrCodes = async (projectId, projectName) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/export-project-qr/${projectId}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${projectName}_Project_Qr_Code.zip`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  } catch (error) {
+    console.error("Error exporting project QR codes:", error);
+    alert("Failed to export project QR codes.");
+  }
+};
 
 export function Project() {
   const { projectId } = useParams(); // Get project ID from URL
@@ -28,7 +77,6 @@ export function Project() {
   const [sectionCount, setSectionCount] = useState(0);
   const [totalFilesCount, setTotalFilesCount] = useState(0);
 
-  const [showModalEditFile, setShowModalEditFile] = useState(false);
   const [showModalAddSection, setShowModalAddSection] = useState(false);
   const [showModalAddFile, setShowModalAddFile] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -60,7 +108,57 @@ export function Project() {
     }
   };
 
-  const calculateTotalFileSize = () => {
+  const exportSection = async (sectionId, sectionName) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/sections/export/${sectionId}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${sectionName}_Section_File.zip`; // Utilisation de sectionName ici
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error("Error exporting section:", error);
+      alert("Failed to export section.");
+    }
+  };
+
+  const exportQrCodes = async (sectionId, sectionName) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/sections/export-qr/${sectionId}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${sectionName}Section_Qr_Code.zip`; // Nom du fichier ZIP modifié
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error("Error exporting QR codes:", error);
+      alert("Failed to export QR codes.");
+    }
+  };
+
+  const calculateTotalFileSize = useCallback(() => {
     let totalSize = 0;
     Object.values(sectionFiles).forEach((files) => {
       if (files) {
@@ -70,11 +168,11 @@ export function Project() {
       }
     });
     setTotalFileSize(totalSize);
-  };
+  }, [sectionFiles]); // sectionFiles est la seule dépendance de calculateTotalFileSize
 
   useEffect(() => {
     calculateTotalFileSize();
-  }, [sectionFiles]);
+  }, [calculateTotalFileSize]);
 
   useEffect(() => {
     sections.forEach((section) => {
@@ -163,7 +261,6 @@ export function Project() {
     setShowModalEditProject(false);
     setShowModalAddSection(false);
     setShowModalAddFile(false);
-    setShowModalEditFile(false);
   };
 
   useEffect(() => {
@@ -435,12 +532,22 @@ export function Project() {
                       </li>
                     </div>
                     <div className="py-1">
-                      <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                      <li
+                        onClick={() =>
+                          exportProjectFiles(project.id, project.project_name)
+                        }
+                        className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6"
+                      >
                         Export Project
                       </li>
                     </div>
                     <div className="py-1">
-                      <li className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6">
+                      <li
+                        onClick={() =>
+                          exportProjectQrCodes(project.id, project.project_name)
+                        }
+                        className="cursor-pointer px-1.5 py-0.5  hover:bg-black/30 rounded-lg text-sm/6"
+                      >
                         Export QR code
                       </li>
                     </div>
@@ -469,7 +576,7 @@ export function Project() {
           </div>
         </div>
       </div>
-      {sections === 0 ? (
+      {sections.length === 0 ? (
         <>
           {/* Search bar */}
           <div className="my-8">
@@ -606,12 +713,28 @@ export function Project() {
                                   </li>
                                 </div>
                                 <div className="py-1 ">
-                                  <li className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6">
+                                  <li
+                                    onClick={() =>
+                                      exportSection(
+                                        section.id,
+                                        section.section_name
+                                      )
+                                    }
+                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
+                                  >
                                     Export Section
                                   </li>
                                 </div>
                                 <div className="py-1 ">
-                                  <li className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6">
+                                  <li
+                                    onClick={() =>
+                                      exportQrCodes(
+                                        section.id,
+                                        section.section_name
+                                      )
+                                    }
+                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
+                                  >
                                     Export QR code
                                   </li>
                                 </div>
@@ -680,22 +803,11 @@ export function Project() {
                 onFileUploaded={() => {
                   fetchSectionFiles(selectedSection.id); // Appel de la fonction de fetch ici
                 }}
+                sectionId={selectedSection.id}
               />
             )}
           </Modal>
-          {/* Modal Edit File */}
-          <Modal isVisible={showModalEditFile}>
-            {selectedSection && (
-              <ModalEditFile
-                onCloseModalEditFile={handleCloseModals}
-                projectName={project.project_name}
-                sectionName={selectedSection.section_name}
-                onFileUploaded={() => {
-                  fetchSectionFiles(selectedSection.id);
-                }}
-              />
-            )}
-          </Modal>
+
           <Modal isVisible={showModalEditSection}>
             {sectionToEdit && (
               <ModalEditSection

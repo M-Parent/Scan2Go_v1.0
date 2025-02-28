@@ -19,6 +19,8 @@ export function Table({
   const [qrCodeUrl, setQrCodeUrl] = useState(null); // State pour l'URL du QR code
   const [showQrCodePopup, setShowQrCodePopup] = useState(false);
   const [currentFileName, setCurrentFileName] = useState("");
+  const [currentSectionName, setCurrentSectionName] = useState("");
+  const [currentProjectName, setCurrentProjectName] = useState("");
   const popupRef = useRef(null);
   const iconRef = useRef(null);
   const [showModalEditFile, setShowModalEditFile] = useState(false);
@@ -78,13 +80,37 @@ export function Table({
         throw new Error("Failed to fetch tags");
       }
       const tags = await response.json();
+      // Mettre à jour fileTags ici
+      setFileTags((prevTags) => ({
+        ...prevTags,
+        [fileId]: tags,
+      }));
       return tags;
     } catch (error) {
       console.error("Error fetching file tags:", error);
-      return []; // Retourner un tableau vide en cas d'erreur
+      return [];
     }
   };
 
+  const handleFileUploaded = async () => {
+    await fetchSectionFiles(section.id);
+    // Mettre à jour les tags après la mise à jour des fichiers
+    if (selectedFileToEdit) {
+      fetchFileTags(selectedFileToEdit.id);
+    }
+  };
+
+  useEffect(() => {
+    // Mettre à jour les tags lorsque sectionFiles change
+    const updateFileTags = async () => {
+      if (sectionFiles[section.id]) {
+        for (const file of sectionFiles[section.id]) {
+          await fetchFileTags(file.id);
+        }
+      }
+    };
+    updateFileTags();
+  }, [sectionFiles, section.id]);
   const handleDeleteFile = async (fileId, sectionId) => {
     const confirmDelete = window.confirm(
       "Êtes-vous sûr de vouloir supprimer ce fichier ?"
@@ -136,7 +162,13 @@ export function Table({
     };
   }, [showQrCodePopup]);
 
-  const handleToggleQrCodePopup = async (url, fileName, event) => {
+  const handleToggleQrCodePopup = async (
+    url,
+    fileName,
+    sectionName,
+    projectName,
+    event
+  ) => {
     if (event && event.stopPropagation) {
       event.stopPropagation();
     }
@@ -148,6 +180,8 @@ export function Table({
       const generatedQrCodeUrl = await QRCode.toDataURL(url);
       setQrCodeUrl(generatedQrCodeUrl);
       setCurrentFileName(fileName);
+      setCurrentSectionName(sectionName);
+      setCurrentProjectName(projectName);
       setShowQrCodePopup(true);
     } catch (error) {
       console.error("Error generating QR code:", error);
@@ -190,6 +224,8 @@ export function Table({
                       handleToggleQrCodePopup(
                         file.url_qr_code,
                         file.name,
+                        section.section_name,
+                        project.project_name,
                         event
                       ) // Correction ici
                   }
@@ -208,7 +244,8 @@ export function Table({
                       className=" py-6 px-12 Glassmorphgisme-noHover"
                     >
                       <p className="text-white text-2xl pb-6">
-                        {currentFileName}
+                        {currentProjectName} / {currentSectionName} /{" "}
+                        <span className="text-red-500">{currentFileName}</span>
                       </p>{" "}
                       {/* Utilisation de currentFileName */}
                       <img
@@ -303,9 +340,8 @@ export function Table({
             onCloseModalEditFile={handleCloseModalEditFile}
             projectName={project.project_name}
             sectionName={selectedSection.section_name}
-            onFileUploaded={() => {
-              fetchSectionFiles(section.id);
-            }}
+            sectionId={selectedSection.id}
+            onFileUploaded={handleFileUploaded}
             fileId={selectedFileToEdit.id}
             oldFilePath={selectedFileToEdit.path_file}
             file={selectedFileToEdit}

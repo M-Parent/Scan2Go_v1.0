@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const AdmZip = require("adm-zip");
 const fs = require("fs");
 const path = require("path");
 const db = require("../db");
@@ -125,12 +126,11 @@ router.get("/:projectId", async (req, res) => {
       .query("SELECT * FROM section WHERE project_id = ?", [projectId]);
 
     if (!sections || sections.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "Aucune section trouvée pour ce projet." });
+      // Renvoyer un tableau vide au lieu d'une erreur 404
+      return res.status(200).json([]);
     }
 
-    res.status(200).json(sections); // Send the sections data
+    res.status(200).json(sections); // Envoyer les données des sections
   } catch (error) {
     console.error("Erreur lors de la récupération des sections:", error);
     res.status(500).json({ message: "Erreur serveur" });
@@ -269,6 +269,150 @@ router.delete("/:sectionId", async (req, res) => {
     res.status(200).json({ message: "Section deleted successfully." });
   } catch (error) {
     console.error("Error deleting section:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/export/:sectionId", async (req, res) => {
+  const sectionId = req.params.sectionId;
+
+  try {
+    const [section] = await db
+      .promise()
+      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
+        sectionId,
+      ]);
+    if (!section || section.length === 0) {
+      return res.status(404).json({ error: "Section not found." });
+    }
+    const sectionName = section[0].section_name;
+    const projectId = section[0].project_id;
+
+    const [project] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+    if (!project || project.length === 0) {
+      return res.status(404).json({ error: "Project not found." });
+    }
+    const projectName = project[0].project_name;
+
+    const folderPath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      projectName,
+      sectionName
+    );
+
+    if (!fs.existsSync(folderPath)) {
+      return res.status(404).json({ error: "Section folder not found." });
+    }
+
+    // Récupérer les chemins des fichiers depuis la base de données
+    const [files] = await db
+      .promise()
+      .query("SELECT path_file FROM file WHERE section_id = ?", [sectionId]);
+
+    if (!files || files.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No files found for this section." });
+    }
+
+    const zip = new AdmZip();
+
+    // Ajouter chaque fichier au ZIP en conservant la structure
+    for (const file of files) {
+      const filePath = path.join(__dirname, "..", file.path_file); // Assurez-vous que le chemin est correct
+      if (fs.existsSync(filePath)) {
+        // Calculer le chemin relatif à partir du dossier de la section
+        const relativePath = path.relative(folderPath, filePath);
+        zip.addLocalFile(filePath, path.dirname(relativePath)); // Ajouter le fichier en conservant la structure
+      } else {
+        console.warn(`File not found: ${filePath}`);
+      }
+    }
+
+    const zipBuffer = zip.toBuffer();
+
+    res.set("Content-Type", "application/zip");
+    res.set("Content-Disposition", `attachment; filename=${sectionName}.zip`);
+    res.send(zipBuffer);
+  } catch (error) {
+    console.error("Error exporting section:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/export-qr/:sectionId", async (req, res) => {
+  const sectionId = req.params.sectionId;
+
+  try {
+    const [section] = await db
+      .promise()
+      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
+        sectionId,
+      ]);
+    if (!section || section.length === 0) {
+      return res.status(404).json({ error: "Section not found." });
+    }
+    const sectionName = section[0].section_name;
+    const projectId = section[0].project_id;
+
+    const [project] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+    if (!project || project.length === 0) {
+      return res.status(404).json({ error: "Project not found." });
+    }
+    const projectName = project[0].project_name;
+
+    const folderPath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      projectName,
+      sectionName
+    );
+
+    if (!fs.existsSync(folderPath)) {
+      return res.status(404).json({ error: "Section folder not found." });
+    }
+
+    // Récupérer les chemins des fichiers PDF depuis la base de données
+    const [files] = await db
+      .promise()
+      .query("SELECT path_pdf FROM file WHERE section_id = ?", [sectionId]);
+
+    if (!files || files.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No QR code files found for this section." });
+    }
+
+    const zip = new AdmZip();
+
+    // Ajouter chaque fichier PDF au ZIP en conservant la structure
+    for (const file of files) {
+      const filePath = path.join(__dirname, "..", file.path_pdf); // Assurez-vous que le chemin est correct
+      if (fs.existsSync(filePath)) {
+        const relativePath = path.relative(folderPath, filePath);
+        zip.addLocalFile(filePath, path.dirname(relativePath));
+      } else {
+        console.warn(`QR code file not found: ${filePath}`);
+      }
+    }
+
+    const zipBuffer = zip.toBuffer();
+
+    res.set("Content-Type", "application/zip");
+    res.set(
+      "Content-Disposition",
+      `attachment; filename=${sectionName}_qr.zip`
+    ); // Nom du fichier ZIP modifié
+    res.send(zipBuffer);
+  } catch (error) {
+    console.error("Error exporting QR code files:", error);
     res.status(500).json({ error: "Server error" });
   }
 });

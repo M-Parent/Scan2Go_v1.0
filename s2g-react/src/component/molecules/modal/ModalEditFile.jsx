@@ -9,18 +9,64 @@ export function ModalEditFile({
   fileId,
   projectName,
   sectionName,
+  sectionId,
   onCloseModalEditFile,
   onFileUploaded,
 }) {
   const [fileName, setFileName] = useState(file?.name || "");
   const [selectedFile, setSelectedFile] = useState(null);
   const [tags, setTags] = useState([]);
-  const [fileNameWarning, setFileNameWarning] = useState(null);
-  const [serverErrors, setServerErrors] = useState(null);
+  const [existingTags, setExistingTags] = useState([]);
+  const [tagErrors, setTagErrors] = useState({});
+  const [fileNameError, setFileNameError] = useState("");
 
   useEffect(() => {
-    setFileName(file?.name || ""); // Mettre à jour fileName chaque fois que file change
+    setFileName(file?.name || "");
   }, [file]);
+
+  const handleFileNameChange = (event) => {
+    setFileName(event.target.value);
+    setFileNameError(""); // Clear previous error when typing
+  };
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  const handleTagChange = (index, event) => {
+    const newTag = event.target.value.trim();
+    const newTags = [...tags];
+    newTags[index] = newTag;
+    setTags(newTags);
+
+    // Check for duplicate tags
+    const errors = {};
+    for (let i = 0; i < newTags.length; i++) {
+      if (
+        newTags[i] &&
+        newTags.filter((tag) => tag === newTags[i]).length > 1
+      ) {
+        errors[newTags[i]] = "A tag with this name already exists.";
+      }
+    }
+    setTagErrors(errors);
+  };
+
+  const handleAddTag = () => {
+    if (tags.length >= 5) return;
+    if (tags.includes("")) return;
+    setTags([...tags, ""]);
+  };
+
+  const handleDeleteTag = (index) => {
+    const newTags = tags.filter((_, i) => i !== index);
+    setTags(newTags);
+
+    // Clear tag errors if a tag is removed
+    const newTagErrors = { ...tagErrors };
+    delete newTagErrors[tags[index]];
+    setTagErrors(newTagErrors);
+  };
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -31,7 +77,8 @@ export function ModalEditFile({
           );
           if (response.ok) {
             const tagsData = await response.json();
-            setTags(tagsData.map((tag) => ({ name: tag })));
+            setTags(tagsData);
+            setExistingTags(tagsData);
           } else {
             console.error("Failed to fetch tags:", response.status);
           }
@@ -43,54 +90,60 @@ export function ModalEditFile({
     fetchTags();
   }, [fileId]);
 
-  const handleFileNameChange = (event) => {
-    setFileName(event.target.value);
-    setFileNameWarning(null);
-  };
-
-  const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
-  };
-
-  const incrementCount = () => {
-    setTags([...tags, { name: "" }]);
-  };
-
-  const decrementCount = () => {
-    if (tags.length > 0) {
-      setTags(tags.slice(0, tags.length - 1));
+  const checkFileNameExists = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/uploadFile/checkFileName?sectionId=${sectionId}&fileName=${fileName}`
+      );
+      const data = await response.json();
+      if (data.exists && fileName !== file.name) {
+        setFileNameError("A file with this name already exists.");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking file name:", error);
+      return false;
     }
-  };
-
-  const handleTagChange = (index, event) => {
-    const newTags = [...tags];
-    newTags[index].name = event.target.value;
-    setTags(newTags);
-  };
-
-  const handleRemoveTag = (index) => {
-    const newTags = [...tags];
-    newTags.splice(index, 1);
-    setTags(newTags);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("fileName", fileName);
-    formData.append("sectionName", sectionName);
-    formData.append("projectName", projectName);
-    formData.append("oldFilePath", file.path_file);
-    formData.append("tags", JSON.stringify(tags.map((tag) => tag.name)));
+    const fileNameExists = await checkFileNameExists();
+    if (fileNameExists) {
+      return; // Prevent submission if file name exists
+    }
 
-    console.log("FormData:", formData); // Inspecter formData
-    console.log("fileId:", fileId); // Inspecter fileId
-    console.log("projectName:", projectName);
-    console.log("sectionName:", sectionName);
-    console.log("fileName", fileName);
-    console.log("file.path_file:", file.path_file);
+    const tagsToDelete = existingTags.filter((tag) => !tags.includes(tag));
+
+    if (tagsToDelete.length > 0) {
+      try {
+        await fetch(
+          `${API_BASE_URL}/api/uploadFile/files/${fileId}/tags/delete`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tags: tagsToDelete }),
+          }
+        );
+      } catch (error) {
+        console.error("Error deleting tags:", error);
+      }
+    }
+
+    const formData = new FormData();
+    formData.append("fileName", fileName);
+    formData.append("projectName", projectName);
+    formData.append("sectionName", sectionName);
+
+    tags.forEach((tag) => {
+      formData.append("tags[]", tag);
+    });
+
+    if (selectedFile) {
+      formData.append("file", selectedFile);
+    }
 
     try {
       const response = await fetch(
@@ -102,11 +155,15 @@ export function ModalEditFile({
       );
 
       if (response.ok) {
+        const tagsResponse = await fetch(
+          `${API_BASE_URL}/api/uploadFile/files/${fileId}/tags`
+        );
+        if (tagsResponse.ok) {
+          const updatedTags = await tagsResponse.json();
+          setTags(updatedTags);
+        }
         onFileUploaded();
         onCloseModalEditFile();
-      } else {
-        const errorData = await response.json();
-        setServerErrors(errorData.errors);
       }
     } catch (error) {
       console.error("Connection error:", error);
@@ -118,7 +175,8 @@ export function ModalEditFile({
       <ModalTitle title="Edit File" onClose={onCloseModalEditFile} />
       <div className="flex justify-center pt-3 ">
         <p className="font-bold text-lg">
-          {projectName} / {sectionName} / {fileName}
+          {projectName} / {sectionName} /{" "}
+          <span className="text-red-500">{fileName}</span>
         </p>
       </div>
       <div className="md:px-14 px-7">
@@ -128,13 +186,13 @@ export function ModalEditFile({
           value={fileName}
           onChange={handleFileNameChange}
         />
-        {fileNameWarning && (
-          <p className="text-yellow-500 text-sm">{fileNameWarning}</p>
+        {fileNameError && (
+          <p className="text-red-500 text-sm">{fileNameError}</p>
         )}
-        <div className="mb-4">
+        <div className="my-3">
           <label
             htmlFor="projectFile"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-white mb-2"
           >
             Upload File:
           </label>
@@ -146,75 +204,70 @@ export function ModalEditFile({
             className="block w-full rounded-xl bg-transparent border-white border  outline outline-1 -outline-offset-1 placeholder:text-white focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 file:px-2 file:py-1 file:bg-white/30 file:border-transparent file:text-white file: hover:file:bg-white/50 file:rounded-s-xl file:me-3"
           />
         </div>
-      </div>
-      {/* Tag */}
-      <div className="md:px-14 px-7">
-        <div className="mt-5 flex items-center">
-          <label className="me-4" htmlFor="tags">
-            Tag Count:
-          </label>
-          <div className="flex items-center">
-            <button
-              type="button"
-              onClick={decrementCount}
-              className="bg-white/30 hover:bg-white/50 boder-white border-y border-s text-white font-bold px-3 py-1 rounded-s-xl"
-            >
-              -
-            </button>
-            <span className="px-3 py-1 border-white border-y">
-              {tags.length}
-            </span>
-            <button
-              type="button"
-              onClick={incrementCount}
-              className="bg-white/30 hover:bg-white/50 boder-white border-y border-e text-white font-bold px-3 py-1 rounded-e-xl"
-            >
-              +
-            </button>
+
+        {/* Tags Section - Styled */}
+        <div className="md:px-0 px-0">
+          <div className="mt-5 flex items-center">
+            <label className="me-4 text-sm font-medium text-white">
+              Tag Count:
+            </label>
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => handleDeleteTag(tags.length - 1)}
+                className="bg-white/30 hover:bg-white/50 boder-white border-y border-s text-white font-bold px-3 py-1 rounded-s-xl"
+              >
+                -
+              </button>
+              <span className="px-3 py-1 border-white border-y">
+                {tags.length}
+              </span>
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="bg-white/30 hover:bg-white/50 boder-white border-y border-e text-white font-bold px-3 py-1 rounded-e-xl"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-auto h-24 scrollbar-custom mt-1 pe-6">
+            {tags.map((tag, index) => (
+              <div key={index} className="my-2.5">
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    placeholder="Tag name..."
+                    value={tag}
+                    onChange={(event) => handleTagChange(index, event)}
+                    className={`block w-full rounded-xl bg-transparent px-3 py-1.5 text-base outline outline-1 -outline-offset-1 placeholder:text-white focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 ${
+                      tagErrors[tag] ? "border-red-500" : ""
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTag(index)}
+                    className="text-red-500 ml-2"
+                  >
+                    <div className="bg-white/20 hover:bg-red-700 boder-white border p-1.5 rounded-lg">
+                      <img
+                        src="../../../img/icon/trash.svg"
+                        width={28}
+                        alt="Trash-Can"
+                      />
+                    </div>
+                  </button>
+                </div>
+                {tagErrors[tag] && (
+                  <p className="text-red-500 text-sm">{tagErrors[tag]}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-
-        <div className="overflow-auto h-24 scrollbar-custom mt-1 pe-6">
-          {tags.map((tag, index) => (
-            <div key={index} className="my-2.5">
-              <div className="flex items-center">
-                <input
-                  type="text"
-                  placeholder="Tag name..."
-                  value={tag.name}
-                  onChange={(event) => handleTagChange(index, event)}
-                  className={`block w-full rounded-xl bg-transparent px-3 py-1.5 text-base outline outline-1 -outline-offset-1 placeholder:text-white focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 ${
-                    tag.error || (serverErrors && serverErrors[tag.name])
-                      ? "border-red-500"
-                      : ""
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTag(index)}
-                  className="text-red-500 ml-2"
-                >
-                  <div className="bg-white/20 hover:bg-red-700 boder-white border p-1.5 rounded-lg">
-                    <img
-                      src="../../../img/icon/trash.svg"
-                      width={28}
-                      alt="Trash-Can"
-                    />
-                  </div>
-                </button>
-              </div>
-              {(tag.error || (serverErrors && serverErrors[tag.name])) && (
-                <div className="text-red-500 mt-1">
-                  {tag.error && <p>{tag.error}</p>}
-                  {!tag.error && serverErrors && serverErrors[tag.name] && (
-                    <p>{serverErrors[tag.name]}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
       </div>
+
       <ModalFooter name="Save" onClose={onCloseModalEditFile} />
     </form>
   );

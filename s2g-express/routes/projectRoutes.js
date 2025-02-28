@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const AdmZip = require("adm-zip");
 const fs = require("fs");
 const db = require("../db");
 
@@ -404,6 +405,128 @@ router.delete("/:id", (req, res) => {
       });
     }
   );
+});
+
+router.get("/export-project-files/:projectId", async (req, res) => {
+  const projectId = req.params.projectId;
+
+  try {
+    const [project] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+    if (!project || project.length === 0) {
+      return res.status(404).json({ error: "Project not found." });
+    }
+    const projectName = project[0].project_name;
+
+    const projectFolder = path.join(__dirname, "..", "uploads", projectName);
+
+    if (!fs.existsSync(projectFolder)) {
+      return res.status(404).json({ error: "Project folder not found." });
+    }
+
+    // Récupérer tous les chemins de fichiers pour le projet
+    const [files] = await db.promise().query(
+      `
+      SELECT file.path_file
+      FROM file
+      JOIN section ON file.section_id = section.id
+      WHERE section.project_id = ?
+    `,
+      [projectId]
+    );
+
+    if (!files || files.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No files found for this project." });
+    }
+
+    const zip = new AdmZip();
+
+    for (const file of files) {
+      const filePath = path.join(__dirname, "..", file.path_file);
+      if (fs.existsSync(filePath)) {
+        const relativePath = path.relative(projectFolder, filePath);
+        zip.addLocalFile(filePath, path.dirname(relativePath));
+      } else {
+        console.warn(`File not found: ${filePath}`);
+      }
+    }
+
+    const zipBuffer = zip.toBuffer();
+
+    res.set("Content-Type", "application/zip");
+    res.set(
+      "Content-Disposition",
+      `attachment; filename=${projectName}_files.zip`
+    );
+    res.send(zipBuffer);
+  } catch (error) {
+    console.error("Error exporting project files:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/export-project-qr/:projectId", async (req, res) => {
+  const projectId = req.params.projectId;
+
+  try {
+    const [project] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+    if (!project || project.length === 0) {
+      return res.status(404).json({ error: "Project not found." });
+    }
+    const projectName = project[0].project_name;
+
+    const projectFolder = path.join(__dirname, "..", "uploads", projectName);
+
+    if (!fs.existsSync(projectFolder)) {
+      return res.status(404).json({ error: "Project folder not found." });
+    }
+
+    // Récupérer tous les chemins de fichiers QR pour le projet
+    const [files] = await db.promise().query(
+      `
+      SELECT file.path_pdf
+      FROM file
+      JOIN section ON file.section_id = section.id
+      WHERE section.project_id = ?
+    `,
+      [projectId]
+    );
+
+    if (!files || files.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No QR code files found for this project." });
+    }
+
+    const zip = new AdmZip();
+
+    for (const file of files) {
+      const filePath = path.join(__dirname, "..", file.path_pdf);
+      if (fs.existsSync(filePath)) {
+        const relativePath = path.relative(projectFolder, filePath);
+        zip.addLocalFile(filePath, path.dirname(relativePath));
+      } else {
+        console.warn(`QR code file not found: ${filePath}`);
+      }
+    }
+
+    const zipBuffer = zip.toBuffer();
+
+    res.set("Content-Type", "application/zip");
+    res.set(
+      "Content-Disposition",
+      `attachment; filename=${projectName}_qr.zip`
+    );
+    res.send(zipBuffer);
+  } catch (error) {
+    console.error("Error exporting project QR codes:", error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 module.exports = router;

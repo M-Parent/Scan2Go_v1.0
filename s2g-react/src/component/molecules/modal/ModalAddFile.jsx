@@ -10,13 +10,14 @@ export function ModalAddFile({
   sectionName,
   projectName,
   onFileUploaded,
+  sectionId,
 }) {
   const [fileName, setFileName] = useState("");
   const [file, setFile] = useState(null);
-  const [fileNameWarning, setFileNameWarning] = useState("");
-  const [tags, setTags] = useState([{ name: "", error: "" }]); // State pour les tags
+  const [tags, setTags] = useState([{ name: "", error: "" }]);
   const [errors, setErrors] = useState({});
   const [serverErrors, setServerErrors] = useState({});
+  const [fileNameError, setFileNameError] = useState("");
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -24,22 +25,21 @@ export function ModalAddFile({
 
   useEffect(() => {
     if (!fileName) {
-      setFileNameWarning("");
+      setFileNameError("");
       return;
     }
 
     const checkFileNameExists = async () => {
+      console.log("sectionId:", sectionId);
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/uploadFile/checkFileName?projectName=${projectName}&fileName=${fileName}`
+          `${API_BASE_URL}/api/uploadFile/checkFileName?sectionId=${sectionId}&fileName=${fileName}` // Modification ici
         );
         const data = await response.json();
         if (data.exists) {
-          setFileNameWarning(
-            "Attention : Un fichier avec ce nom existe déjà dans une section de ce project."
-          );
+          setFileNameError("Un fichier avec ce nom existe déjà.");
         } else {
-          setFileNameWarning("");
+          setFileNameError("");
         }
       } catch (error) {
         console.error(
@@ -51,7 +51,7 @@ export function ModalAddFile({
 
     const timeoutId = setTimeout(checkFileNameExists, 100);
     return () => clearTimeout(timeoutId);
-  }, [fileName, projectName, sectionName]);
+  }, [fileName, sectionId]); // sectionId ajouté aux dépendances
 
   const handleFileNameChange = (e) => {
     setFileName(e.target.value);
@@ -106,6 +106,10 @@ export function ModalAddFile({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (fileNameError) {
+      return; // Prevent form submission if fileNameError exists.
+    }
+
     if (!file) {
       alert("Veuillez sélectionner un fichier.");
       return;
@@ -147,7 +151,6 @@ export function ModalAddFile({
           );
         }
       } else {
-        alert("Fichier téléchargé avec succès !");
         onFileUploaded();
         onCloseModalAddFile();
       }
@@ -172,8 +175,8 @@ export function ModalAddFile({
           value={fileName}
           onChange={handleFileNameChange}
         />
-        {fileNameWarning && (
-          <p className="text-yellow-500 text-sm">{fileNameWarning}</p>
+        {fileNameError && (
+          <p className="text-red-500 text-sm">{fileNameError}</p>
         )}
         <div className="mb-4">
           <label

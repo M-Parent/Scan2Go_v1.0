@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
-import API_BASE_URL from "../../api"; // Import your API URL
+import API_BASE_URL from "../../api";
+import { exportProjectFiles, exportProjectQrCodes } from "../../pages/Project";
 
 export function CardProject({
   projectName,
@@ -73,12 +74,18 @@ export function CardProject({
                 </li>
               </div>
               <div className="py-1">
-                <li className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6">
+                <li
+                  onClick={() => exportProjectFiles(projectId, projectName)}
+                  className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6"
+                >
                   Export Project
                 </li>
               </div>
               <div className="py-1">
-                <li className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6">
+                <li
+                  onClick={() => exportProjectQrCodes(projectId, projectName)}
+                  className="cursor-pointer px-1.5 py-0.5 hover:bg-black/30 rounded-lg text-sm/6"
+                >
                   Export QR code
                 </li>
               </div>
