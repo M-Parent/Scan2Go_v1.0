@@ -6,25 +6,14 @@ const { db, closeConnection } = require("./db"); // Importation destructurée
 const projectRoutes = require("./routes/projectRoutes");
 const sectionsRoutes = require("./routes/sectionsRoutes");
 const filesRoutes = require("./routes/filesRoutes");
+const logger = require("./logger");
 
 const app = express();
 const port = 6301;
 
-if (
-  !process.env.MYSQL_HOST ||
-  !process.env.MYSQL_USER ||
-  !process.env.MYSQL_PASSWORD ||
-  !process.env.MYSQL_DATABASE
-) {
-  console.error(
-    "Erreur : Les variables d'environnement pour la base de données ne sont pas définies."
-  );
-  process.exit(1); // Arrêter l'application
-}
-
 // Middleware
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:3000", // Variable d'env pour l'origine
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
 };
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -46,12 +35,12 @@ app.use((err, req, res, next) => {
 // Arrêt du serveur et fermeture de la connexion à la base de données
 process.on("SIGINT", () => {
   // Ecoute du signal d'interruption (Ctrl+C)
-  console.log("Fermeture du serveur...");
+  logger.info("Fermeture du serveur...");
   closeConnection(); // Fermeture de la connexion à la base de données
   process.exit(0); // Arrêt du processus
 });
 
 // Démarrage du serveur
 app.listen(port, () => {
-  console.log(`Server running on Port : ${port}`); // Utilisation de template literals
+  logger.info(`Server running on Port : ${port}`); // Utilisation de template literals
 });

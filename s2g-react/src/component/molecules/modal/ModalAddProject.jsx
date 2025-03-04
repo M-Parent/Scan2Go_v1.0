@@ -3,6 +3,7 @@ import { ModalInputText } from "./ModalInputText";
 import { ModalInputFile } from "./ModalInputFile";
 import { ModalTitle } from "./ModalTitle";
 import { ModalFooter } from "./ModalFooter";
+import API_BASE_URL from "../../../api";
 
 export function ModalAddProject({ onCloseModal, onProjectAdded }) {
   // Ajout de la prop onProjectAdded
@@ -24,7 +25,7 @@ export function ModalAddProject({ onCloseModal, onProjectAdded }) {
     formData.append("projectImage", projectImage);
 
     try {
-      const response = await fetch("/api/projects", {
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
         method: "POST",
         body: formData,
       });

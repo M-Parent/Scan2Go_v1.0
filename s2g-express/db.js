@@ -1,12 +1,14 @@
+const logger = require("./logger");
+
 require("dotenv").config();
 const mysql = require("mysql2");
 
 // Configuration de la connexion à la base de données
 const db = mysql.createConnection({
-  host: process.env.MYSQL_HOST || "s2g-db",
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
+  host: process.env.MYSQL_HOST || "localhost",
+  user: process.env.MYSQL_USER || "scan2go",
+  password: process.env.MYSQL_PASSWORD || "password",
+  database: process.env.MYSQL_DATABASE || "scan2go",
 });
 
 // Connection DB log
@@ -15,7 +17,7 @@ db.connect((err) => {
     console.error("Erreur de connexion à la base de données:", err);
     process.exit(1); // Arrêter l'application en cas d'erreur critique
   }
-  console.log("Connecté à la base de données MySQL!");
+  logger.info("Connecté à la base de données MySQL!");
   createProjectTable();
   createSectionTable();
   createFileTable();
@@ -36,7 +38,7 @@ async function createProjectTable() {
 
   try {
     const [results] = await db.promise().query(createTableQuery);
-    console.log('Table "project" créée ou déjà existante.');
+    logger.info('Table "project" créée ou déjà existante.');
   } catch (err) {
     console.error("Erreur lors de la création de la table project:", err);
   }
@@ -56,7 +58,7 @@ async function createSectionTable() {
 
   try {
     const [results] = await db.promise().query(createTableQuery);
-    console.log('Table "section" créée ou déjà existante.');
+    logger.info('Table "section" créée ou déjà existante.');
   } catch (err) {
     console.error("Erreur lors de la création de la table section:", err);
   }
@@ -79,7 +81,7 @@ async function createFileTable() {
 
   try {
     const [results] = await db.promise().query(createTableQuery);
-    console.log('Table "file" créée ou déjà existante.');
+    logger.info('Table "file" créée ou déjà existante.');
   } catch (err) {
     console.error("Erreur lors de la création de la table file:", err);
   }
@@ -99,7 +101,7 @@ async function createTagTable() {
 
   try {
     const [results] = await db.promise().query(createTableQuery);
-    console.log('Table "tag" créée ou déjà existante.');
+    logger.info('Table "tag" créée ou déjà existante.');
   } catch (err) {
     console.error("Erreur lors de la création de la table tag:", err);
   }
@@ -111,7 +113,7 @@ function closeConnection() {
     if (err) {
       console.error("Erreur lors de la fermeture de la connexion:", err);
     } else {
-      console.log("Connexion à la base de données fermée.");
+      logger.info("Connexion à la base de données fermée.");
     }
   });
 }

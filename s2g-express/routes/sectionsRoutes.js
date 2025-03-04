@@ -5,6 +5,7 @@ const AdmZip = require("adm-zip");
 const fs = require("fs");
 const path = require("path");
 const db = require("../db");
+const logger = require("../logger");
 
 // Configuration de Multer pour gérer les fichiers
 const storage = multer.diskStorage({
@@ -38,11 +39,10 @@ const upload = multer({ storage: storage });
 
 router.post("/addsections", upload.array("files"), async (req, res) => {
   const { projectId, sectionNames } = req.body;
-  const errors = {}; // Object to store errors
+  const errors = {};
   const sectionsToAdd = [];
 
   if (!projectId || !sectionNames || !Array.isArray(sectionNames)) {
-    // ... (Cleanup - same as before)
     return res.status(400).json({ message: "Données invalides" });
   }
 
@@ -52,15 +52,13 @@ router.post("/addsections", upload.array("files"), async (req, res) => {
       .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
 
     if (!project || project.length === 0) {
-      // ... (Cleanup - same as before)
       return res.status(404).json({ message: "Projet non trouvé" });
     }
 
     const projectName = project[0].project_name;
 
-    // Validation and duplicate check
     for (const sectionName of sectionNames) {
-      if (!sectionName) continue; // Skip empty names
+      if (!sectionName) continue;
 
       const [existingSection] = await db
         .promise()
@@ -70,20 +68,18 @@ router.post("/addsections", upload.array("files"), async (req, res) => {
         );
 
       if (existingSection && existingSection.length > 0) {
-        errors[sectionName] = "This section name is already in use."; // Add error message
+        errors[sectionName] = "This section name is already in use.";
       } else {
-        sectionsToAdd.push(sectionName); // Add to the array of sections to add
+        sectionsToAdd.push(sectionName);
       }
     }
 
     if (Object.keys(errors).length > 0) {
-      // If there are errors, send them back
       return res
         .status(400)
-        .json({ message: "Des noms de section sont invalides.", errors }); // Send errors object
+        .json({ message: "Des noms de section sont invalides.", errors });
     }
 
-    // Now add the valid sections
     for (const sectionName of sectionsToAdd) {
       const sectionPath = path.join(
         __dirname,
@@ -94,15 +90,25 @@ router.post("/addsections", upload.array("files"), async (req, res) => {
       );
       fs.mkdirSync(sectionPath, { recursive: true });
 
-      await db
+      // Insertion de la section et récupération de l'ID
+      const [result] = await db
         .promise()
         .query("INSERT INTO section (project_id, section_name) VALUES (?, ?)", [
           projectId,
           sectionName,
         ]);
 
-      console.log(
-        `Section "${sectionName}" ajoutée pour le projet ${projectName} (ID: ${projectId})`
+      const sectionId = result.insertId;
+
+      // Récupération de la date de création
+      const [sectionInfo] = await db
+        .promise()
+        .query("SELECT created_at FROM section WHERE id = ?", [sectionId]);
+
+      const createdAt = sectionInfo[0].created_at;
+
+      logger.info(
+        `Section created: ID = ${sectionId}, section name: "${sectionName}" for project name: "${projectName}", Created at: ${createdAt}`
       );
     }
 
@@ -111,7 +117,6 @@ router.post("/addsections", upload.array("files"), async (req, res) => {
       .json({ message: "Sections et fichiers ajoutés avec succès" });
   } catch (error) {
     console.error("Erreur lors de l'ajout des sections:", error);
-    // ... (Cleanup - same as before)
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
@@ -139,19 +144,20 @@ router.get("/:projectId", async (req, res) => {
 
 router.put("/:sectionId", async (req, res) => {
   const sectionId = req.params.sectionId;
-  const { section_name: newSectionName } = req.body; // Get the new name from the request body
+  const { section_name: newSectionName } = req.body;
 
   if (!newSectionName) {
     return res.status(400).json({ error: "New section name is required." });
   }
 
   try {
-    // 1. Get the current section name and project name
+    // 1. Get the current section name, project name, and updated_at
     const [section] = await db
       .promise()
-      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
-        sectionId,
-      ]);
+      .query(
+        "SELECT section_name, project_id, updated_at FROM section WHERE id = ?",
+        [sectionId]
+      );
 
     if (!section || section.length === 0) {
       return res.status(404).json({ error: "Section not found." });
@@ -159,6 +165,7 @@ router.put("/:sectionId", async (req, res) => {
 
     const currentSectionName = section[0].section_name;
     const projectId = section[0].project_id;
+    const sectionUpdatedAt = section[0].updated_at;
 
     const [project] = await db
       .promise()
@@ -186,10 +193,9 @@ router.put("/:sectionId", async (req, res) => {
     );
 
     if (fs.existsSync(oldFolderPath)) {
-      // Only rename if the folder exists
       fs.renameSync(oldFolderPath, newFolderPath);
     } else {
-      console.warn(`Folder ${oldFolderPath} does not exist. Skipping rename.`);
+      logger.warn(`Folder ${oldFolderPath} does not exist. Skipping rename.`);
     }
 
     // 3. Update the database
@@ -201,17 +207,59 @@ router.put("/:sectionId", async (req, res) => {
       ]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Section not found for update." }); // Should not happen but good to check
+      return res.status(404).json({ error: "Section not found for update." });
     }
 
-    // 4. Return the updated section data (optional but good practice)
+    // 4. Update file paths in the database
+    const [filesToUpdate] = await db
+      .promise()
+      .query(
+        "SELECT id, path_file, url_qr_code, path_pdf FROM file WHERE section_id = ?",
+        [sectionId]
+      );
+
+    for (const file of filesToUpdate) {
+      // Créer les chemins pour le remplacement
+      const oldFilePath = `uploads\\${projectName}\\${currentSectionName}\\`;
+      const newFilePath = `uploads\\${projectName}\\${newSectionName}\\`;
+      const oldUrlPath = `uploads/${projectName}/${currentSectionName}/`;
+      const newUrlPath = `uploads/${projectName}/${newSectionName}/`;
+
+      // Remplacer les chemins (backslashes pour path_file et path_pdf)
+      const updatedPathFile = file.path_file.replace(oldFilePath, newFilePath);
+      const updatedPathPdf = file.path_pdf.replace(oldFilePath, newFilePath);
+
+      // Remplacer les chemins (forward slashes pour url_qr_code)
+      const updatedUrlQrCode = file.url_qr_code.replace(oldUrlPath, newUrlPath);
+
+      // Mettre à jour la base de données
+      await db
+        .promise()
+        .query(
+          "UPDATE file SET path_file = ?, url_qr_code = ?, path_pdf = ? WHERE id = ?",
+          [updatedPathFile, updatedUrlQrCode, updatedPathPdf, file.id]
+        );
+
+      logger.info(
+        `Updated file paths for file ID ${file.id} - Old path: ${oldFilePath}, New path: ${newFilePath}`
+      );
+    }
+
+    // 5. Return the updated section data and log the change
     const [updatedSection] = await db
       .promise()
       .query("SELECT * FROM section WHERE id = ?", [sectionId]);
 
-    res.status(200).json(updatedSection[0]); // Send the updated section data
+    const updatedSectionData = updatedSection[0];
+
+    // Log the section name change
+    logger.info(
+      `Section name changed - Old Name: "${currentSectionName}", New Name: "${updatedSectionData.section_name}", for project: "${projectName}", Updated at: ${sectionUpdatedAt}`
+    );
+
+    res.status(200).json(updatedSectionData);
   } catch (error) {
-    console.error("Error updating section:", error);
+    logger.error("Error updating section:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -220,11 +268,13 @@ router.delete("/:sectionId", async (req, res) => {
   const sectionId = req.params.sectionId;
 
   try {
+    // Récupérer les informations de la section avant la suppression
     const [section] = await db
       .promise()
-      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
-        sectionId,
-      ]);
+      .query(
+        "SELECT section_name, project_id, updated_at FROM section WHERE id = ?",
+        [sectionId]
+      );
 
     if (!section || section.length === 0) {
       return res.status(404).json({ error: "Section not found." });
@@ -232,6 +282,7 @@ router.delete("/:sectionId", async (req, res) => {
 
     const sectionName = section[0].section_name;
     const projectId = section[0].project_id;
+    const sectionUpdatedAt = section[0].updated_at;
 
     const [project] = await db
       .promise()
@@ -252,7 +303,7 @@ router.delete("/:sectionId", async (req, res) => {
     );
 
     if (fs.existsSync(folderPath)) {
-      fs.rmSync(folderPath, { recursive: true }); // Use recursive: true to delete non-empty directories
+      fs.rmSync(folderPath, { recursive: true });
     } else {
       console.warn(`Folder ${folderPath} does not exist. Skipping delete.`);
     }
@@ -265,6 +316,11 @@ router.delete("/:sectionId", async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Section not found for deletion." });
     }
+
+    // Journalisation de la suppression après la suppression
+    logger.info(
+      `Section deleted: ID = ${sectionId}, section name: "${sectionName}" for project name: "${projectName}", deleted at: ${sectionUpdatedAt}`
+    );
 
     res.status(200).json({ message: "Section deleted successfully." });
   } catch (error) {
@@ -308,12 +364,14 @@ router.get("/export/:sectionId", async (req, res) => {
       return res.status(404).json({ error: "Section folder not found." });
     }
 
-    // Récupérer les chemins des fichiers depuis la base de données
     const [files] = await db
       .promise()
       .query("SELECT path_file FROM file WHERE section_id = ?", [sectionId]);
 
     if (!files || files.length === 0) {
+      logger.info(
+        `Section files export failed: Section ID=${sectionId}, Section Name="${sectionName}", Project Name="${projectName}", No files found.`
+      );
       return res
         .status(404)
         .json({ error: "No files found for this section." });
@@ -321,13 +379,11 @@ router.get("/export/:sectionId", async (req, res) => {
 
     const zip = new AdmZip();
 
-    // Ajouter chaque fichier au ZIP en conservant la structure
     for (const file of files) {
-      const filePath = path.join(__dirname, "..", file.path_file); // Assurez-vous que le chemin est correct
+      const filePath = path.join(__dirname, "..", file.path_file);
       if (fs.existsSync(filePath)) {
-        // Calculer le chemin relatif à partir du dossier de la section
         const relativePath = path.relative(folderPath, filePath);
-        zip.addLocalFile(filePath, path.dirname(relativePath)); // Ajouter le fichier en conservant la structure
+        zip.addLocalFile(filePath, path.dirname(relativePath));
       } else {
         console.warn(`File not found: ${filePath}`);
       }
@@ -338,6 +394,11 @@ router.get("/export/:sectionId", async (req, res) => {
     res.set("Content-Type", "application/zip");
     res.set("Content-Disposition", `attachment; filename=${sectionName}.zip`);
     res.send(zipBuffer);
+
+    const now = new Date();
+    logger.info(
+      `Section files exported: Section ID=${sectionId}, Section Name="${sectionName}", Project Name="${projectName}", Exported at: ${now.toISOString()}`
+    );
   } catch (error) {
     console.error("Error exporting section:", error);
     res.status(500).json({ error: "Server error" });
@@ -379,12 +440,14 @@ router.get("/export-qr/:sectionId", async (req, res) => {
       return res.status(404).json({ error: "Section folder not found." });
     }
 
-    // Récupérer les chemins des fichiers PDF depuis la base de données
     const [files] = await db
       .promise()
       .query("SELECT path_pdf FROM file WHERE section_id = ?", [sectionId]);
 
     if (!files || files.length === 0) {
+      logger.info(
+        `Section QR codes export failed: Section ID=${sectionId}, Section Name="${sectionName}", Project Name="${projectName}", No QR code files found.`
+      );
       return res
         .status(404)
         .json({ error: "No QR code files found for this section." });
@@ -392,9 +455,8 @@ router.get("/export-qr/:sectionId", async (req, res) => {
 
     const zip = new AdmZip();
 
-    // Ajouter chaque fichier PDF au ZIP en conservant la structure
     for (const file of files) {
-      const filePath = path.join(__dirname, "..", file.path_pdf); // Assurez-vous que le chemin est correct
+      const filePath = path.join(__dirname, "..", file.path_pdf);
       if (fs.existsSync(filePath)) {
         const relativePath = path.relative(folderPath, filePath);
         zip.addLocalFile(filePath, path.dirname(relativePath));
@@ -409,8 +471,13 @@ router.get("/export-qr/:sectionId", async (req, res) => {
     res.set(
       "Content-Disposition",
       `attachment; filename=${sectionName}_qr.zip`
-    ); // Nom du fichier ZIP modifié
+    );
     res.send(zipBuffer);
+
+    const now = new Date();
+    logger.info(
+      `Section QR codes exported: Section ID=${sectionId}, Section Name="${sectionName}", Project Name="${projectName}", Exported at: ${now.toISOString()}`
+    );
   } catch (error) {
     console.error("Error exporting QR code files:", error);
     res.status(500).json({ error: "Server error" });

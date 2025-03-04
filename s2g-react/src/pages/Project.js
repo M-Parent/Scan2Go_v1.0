@@ -9,6 +9,7 @@ import { SearchBarGlass } from "../component/molecules/glass/SearchBarGlass";
 import { ModalAddFile } from "../component/molecules/modal/ModalAddFile";
 import { useParams, useNavigate } from "react-router-dom"; // Import useParams and useNavigate
 import API_BASE_URL from "../api"; // Import your API URL
+import { SearchResultsTable } from "../component/organisms/SearchResultsTable";
 
 export const exportProjectFiles = async (projectId, projectName) => {
   try {
@@ -88,6 +89,35 @@ export function Project() {
 
   const [totalFileSize, setTotalFileSize] = useState(0);
   const [sectionFiles, setSectionFiles] = useState({});
+
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [noResultsFound, setNoResultsFound] = useState(false);
+
+  const handleSearch = async (searchTerm, projectId) => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setNoResultsFound(false); // Réinitialisez l'état
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const response = await fetch(
+        `${API_BASE_URL}/api/projects/${projectId}/search?term=${searchTerm}`
+      );
+      if (!response.ok) {
+        throw new Error("Erreur lors de la recherche");
+      }
+      const results = await response.json();
+      setSearchResults(results);
+      setNoResultsFound(results.length === 0); // Mettez à jour l'état
+    } catch (error) {
+      console.error("Erreur lors de la recherche :", error);
+      alert("Erreur lors de la recherche.");
+    }
+  };
 
   const fetchSectionFiles = async (sectionId) => {
     try {
@@ -578,10 +608,6 @@ export function Project() {
       </div>
       {sections.length === 0 ? (
         <>
-          {/* Search bar */}
-          <div className="my-8">
-            <SearchBarGlass />
-          </div>
           {/* AddGlass default view */}
           <div className="flex justify-center mt-16 lg:mt-48 md:mt-32">
             <button
@@ -614,7 +640,7 @@ export function Project() {
           {/* Search + Add */}
           <div className="lg:mx-48 mx-12 text-white sm:flex my-4">
             <div className="md:ms-auto ms-0 md:ps-24">
-              <SearchBarGlass />
+              <SearchBarGlass onSearch={handleSearch} projectId={projectId} />
             </div>
             <div className="sm:ms-auto flex justify-center mt-5 sm:mt-0">
               <button
@@ -631,161 +657,194 @@ export function Project() {
             </div>
           </div>
 
+          {/* Affichage conditionnel de SearchResultsTable */}
+          {isSearching && searchResults.length > 0 && (
+            <div className="overflow-y-auto h-[530px] lg:mx-40 me-4 scrollbar-custom">
+              <div className="lg:mx-12 mx-12 mt-4 text-white">
+                <SearchResultsTable
+                  sectionFiles={{
+                    [searchResults[0].section_id]: searchResults,
+                  }}
+                  setSectionFiles={setSectionFiles}
+                  section={{
+                    id: searchResults[0].section_id,
+                    section_name: searchResults[0].section_name,
+                  }}
+                  project={{
+                    id: searchResults[0].project_id,
+                    project_name: searchResults[0].project_name,
+                  }}
+                  fetchSectionFiles={fetchSectionFiles}
+                  setSelectedSection={setSelectedSection}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Message si aucun résultat n'est trouvé */}
+          {noResultsFound && (
+            <div className="lg:mx-48 mx-12 text-white text-center mt-4">
+              Aucune section, tags ou fichier trouvé avec cette recherche dans
+              ce projet.
+            </div>
+          )}
+
           {/* Section */}
-          {/* div stiky top  */}
-          <div className="overflow-y-auto h-[530px] lg:me-40 me-4 scrollbar-custom">
-            {sections.map((section) => (
-              <div
-                key={section.id}
-                className="relative lg:ms-52 lg:me-6 mx-12 text-white my-16 "
-              >
-                <div className="">
-                  <div
-                    className={`pb-3 duration-100 ${
-                      sectionCollapse[section.id]
-                    }`}
-                    onClick={() => handleSectionCollapse(section.id)}
-                  >
-                    <button
-                      className={`absolute top-[8px] left-[-24px] transition-transform duration-300 ${
+          {!isSearching && (
+            <div className="overflow-y-auto h-[530px] lg:me-40 me-4 scrollbar-custom">
+              {sections.map((section) => (
+                <div
+                  key={section.id}
+                  className="relative lg:ms-52 lg:me-6 mx-12 text-white my-16 "
+                >
+                  <div>
+                    <div
+                      className={`pb-3 duration-100 ${
                         sectionCollapse[section.id]
-                          ? "rotate-0"
-                          : "rotate-[-90deg]"
                       }`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleSectionCollapse(section.id);
-                      }}
+                      onClick={() => handleSectionCollapse(section.id)}
                     >
-                      <img
-                        src="../img/icon/chevron-down.svg"
-                        alt="Chevron-down icon"
-                        width={16}
-                      />
-                    </button>
+                      <button
+                        className={`absolute top-[8px] left-[-24px] transition-transform duration-300 ${
+                          sectionCollapse[section.id]
+                            ? "rotate-0"
+                            : "rotate-[-90deg]"
+                        }`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleSectionCollapse(section.id);
+                        }}
+                      >
+                        <img
+                          src="../img/icon/chevron-down.svg"
+                          alt="Chevron-down icon"
+                          width={16}
+                        />
+                      </button>
 
-                    <div className="flex justify-between ">
-                      <p className="text-2xl">{section.section_name} :</p>
-                      <div className="flex">
-                        <button
-                          className="Glassmorphgisme py-1.5 px-3"
-                          onClick={() => {
-                            setSelectedSection(section);
-                            setShowModalAddFile(true);
-                          }}
-                        >
-                          <img
-                            src="../img/icon/upload.svg"
-                            alt="Logo upload file"
-                            width={20}
-                          />
-                        </button>
-
-                        <div className="relative">
+                      <div className="flex justify-between ">
+                        <p className="text-2xl">{section.section_name} :</p>
+                        <div className="flex">
                           <button
-                            onClick={() => handleButtonClick2(section.id)}
+                            className="Glassmorphgisme py-1.5 px-3"
+                            onClick={() => {
+                              setSelectedSection(section);
+                              setShowModalAddFile(true);
+                            }}
                           >
                             <img
-                              className="ps-3.5"
-                              src="../img/icon/three-dots-vertical.svg"
-                              alt="dots details icon"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleButtonClick2(section.id);
-                              }}
+                              src="../img/icon/upload.svg"
+                              alt="Logo upload file"
+                              width={20}
                             />
                           </button>
 
-                          {showDropdown2[section.id] && (
-                            <div
-                              className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32"
-                              ref={(el) =>
-                                (dropdownRef2.current[section.id] = el)
-                              }
+                          <div className="relative">
+                            <button
+                              onClick={() => handleButtonClick2(section.id)}
                             >
-                              <ul className="px-2 py-1 divide-y">
-                                <div className="py-1 ">
-                                  <li
-                                    onClick={() => handleEditSection(section)}
-                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
-                                  >
-                                    Edit
-                                  </li>
-                                </div>
-                                <div className="py-1 ">
-                                  <li
-                                    onClick={() =>
-                                      exportSection(
-                                        section.id,
-                                        section.section_name
-                                      )
-                                    }
-                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
-                                  >
-                                    Export Section
-                                  </li>
-                                </div>
-                                <div className="py-1 ">
-                                  <li
-                                    onClick={() =>
-                                      exportQrCodes(
-                                        section.id,
-                                        section.section_name
-                                      )
-                                    }
-                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
-                                  >
-                                    Export QR code
-                                  </li>
-                                </div>
-                                <div className="py-1 ">
-                                  <li
-                                    onClick={() =>
-                                      handleDeleteSection(section.id)
-                                    }
-                                    className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
-                                  >
-                                    Delete
-                                  </li>
-                                </div>
-                              </ul>
-                            </div>
-                          )}
+                              <img
+                                className="ps-3.5"
+                                src="../img/icon/three-dots-vertical.svg"
+                                alt="dots details icon"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleButtonClick2(section.id);
+                                }}
+                              />
+                            </button>
+
+                            {showDropdown2[section.id] && (
+                              <div
+                                className="absolute top-7 right-3 Glassmorphgisme-noHover z-10 w-32"
+                                ref={(el) =>
+                                  (dropdownRef2.current[section.id] = el)
+                                }
+                              >
+                                <ul className="px-2 py-1 divide-y">
+                                  <div className="py-1 ">
+                                    <li
+                                      onClick={() => handleEditSection(section)}
+                                      className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
+                                    >
+                                      Edit
+                                    </li>
+                                  </div>
+                                  <div className="py-1 ">
+                                    <li
+                                      onClick={() =>
+                                        exportSection(
+                                          section.id,
+                                          section.section_name
+                                        )
+                                      }
+                                      className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
+                                    >
+                                      Export Section
+                                    </li>
+                                  </div>
+                                  <div className="py-1 ">
+                                    <li
+                                      onClick={() =>
+                                        exportQrCodes(
+                                          section.id,
+                                          section.section_name
+                                        )
+                                      }
+                                      className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6"
+                                    >
+                                      Export QR code
+                                    </li>
+                                  </div>
+                                  <div className="py-1 ">
+                                    <li
+                                      onClick={() =>
+                                        handleDeleteSection(section.id)
+                                      }
+                                      className="py-1 cursor-pointer px-1.5 hover:bg-black/30 rounded-lg text-sm/6 text-red-500"
+                                    >
+                                      Delete
+                                    </li>
+                                  </div>
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table section */}
+                    <div
+                      className={`mt-1.5 mx-1 sm:me-12 transition-all duration-300 ease-in-out ${
+                        sectionCollapse[section.id]
+                          ? "translate-y-auto opacity-100"
+                          : "translate-y-[-20px] opacity-0"
+                      }`}
+                    >
+                      <div
+                        className={`mx-1 sm:mx-5 relative w-full ${
+                          sectionCollapse[section.id] ? "" : "hidden"
+                        }`}
+                      >
+                        <div className="overflow-x-auto">
+                          <Table
+                            sectionFiles={sectionFiles}
+                            setSectionFiles={setSectionFiles}
+                            section={section}
+                            project={project} // Ajout de project
+                            fetchSectionFiles={fetchSectionFiles} // Ajout de fetchSectionFiles
+                            setSelectedSection={setSelectedSection} // Ajout de setSelectedSection
+                            handleCloseModals={handleCloseModals} // Ajout de handleCloseModals
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* Table section */}
-                  <div
-                    className={`mt-1.5 mx-1 sm:me-12 transition-all duration-300 ease-in-out ${
-                      sectionCollapse[section.id]
-                        ? "translate-y-auto opacity-100"
-                        : "translate-y-[-20px] opacity-0"
-                    }`}
-                  >
-                    <div
-                      className={`mx-1 sm:mx-5 relative w-full ${
-                        sectionCollapse[section.id] ? "" : "hidden"
-                      }`}
-                    >
-                      <div className="overflow-x-auto">
-                        <Table
-                          sectionFiles={sectionFiles}
-                          setSectionFiles={setSectionFiles}
-                          section={section}
-                          project={project} // Ajout de project
-                          fetchSectionFiles={fetchSectionFiles} // Ajout de fetchSectionFiles
-                          setSelectedSection={setSelectedSection} // Ajout de setSelectedSection
-                          handleCloseModals={handleCloseModals} // Ajout de handleCloseModals
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           {/* Modal */}
           <Modal isVisible={showModalAddSection}>
             <ModalAddSection

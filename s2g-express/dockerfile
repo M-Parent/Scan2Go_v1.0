@@ -1,0 +1,20 @@
+# Utiliser une image Node.js comme base
+FROM node:18-alpine
+
+# Définir le répertoire de travail dans le conteneur
+WORKDIR /app
+
+# Copier les fichiers package*.json pour installer les dépendances
+COPY package*.json ./
+
+# Installer les dépendances
+RUN npm install
+
+# Copier le reste du code source
+COPY . .
+
+# Exposer le port sur lequel votre application Express écoute
+EXPOSE 6301
+
+# Commande pour démarrer l'application Express
+CMD ["node", "server.js"]

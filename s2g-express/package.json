@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -24,6 +25,7 @@
     "os": "^0.1.2",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.16.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "winston": "^3.17.0"
   }
 }

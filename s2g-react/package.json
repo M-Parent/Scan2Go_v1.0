@@ -4,16 +4,22 @@
   "proxy": "http://localhost:6301",
   "private": true,
   "dependencies": {
+    "assert": "^2.1.0",
     "axios": "^1.7.9",
+    "buffer": "^6.0.3",
     "cra-template": "1.2.0",
-    "dotenv": "^16.4.7",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
+    "os-browserify": "^0.3.0",
+    "process": "^0.11.10",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "source-map-loader": "^5.0.0",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0"
   },
   "scripts": {
     "start": "react-scripts start",

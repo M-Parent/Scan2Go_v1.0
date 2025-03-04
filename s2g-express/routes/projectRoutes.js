@@ -5,6 +5,7 @@ const path = require("path");
 const AdmZip = require("adm-zip");
 const fs = require("fs");
 const db = require("../db");
+const logger = require("../logger");
 
 // Configuration de Multer
 const storage = multer.diskStorage({
@@ -79,7 +80,10 @@ router.post("/", upload.single("projectImage"), (req, res) => {
                   error: "Erreur lors de la récupération du nouveau projet.",
                 });
               }
-              console.log("Projet ajouté avec succès !");
+              const newProject = newProjectResults[0];
+              logger.info(
+                `Project created: ID=${newProject.id}, Name="${newProject.project_name}", Image Path="${newProject.project_image}", Created At=${newProject.created_at}`
+              );
               return res.status(201).json(newProjectResults[0]);
             }
           );
@@ -136,7 +140,6 @@ router.put("/:id", upload.single("projectImage"), (req, res) => {
           );
         }
         if (results.length > 0) {
-          // Suppression de l'image uploadée si le nom existe déjà
           if (req.file) {
             fs.unlinkSync(req.file.path);
           }
@@ -146,7 +149,7 @@ router.put("/:id", upload.single("projectImage"), (req, res) => {
         }
 
         db.query(
-          "SELECT project_name, project_image FROM project WHERE id = ?",
+          "SELECT project_name, project_image, updated_at FROM project WHERE id = ?",
           [projectId],
           (err, results) => {
             if (err || results.length === 0) {
@@ -159,6 +162,7 @@ router.put("/:id", upload.single("projectImage"), (req, res) => {
 
             let currentProjectName = results[0].project_name;
             let dbProjectImage = results[0].project_image;
+            let currentUpdatedAt = results[0].updated_at;
 
             if (!projectName) projectName = currentProjectName;
 
@@ -212,7 +216,7 @@ router.put("/:id", upload.single("projectImage"), (req, res) => {
                       .join("/"),
                     (err) => {
                       if (err) {
-                        console.log("Image non trouvé");
+                        logger.info("Image non trouvé");
                       }
 
                       fs.rename(oldFolderPath, newFolderPath, (err) => {
@@ -239,10 +243,6 @@ router.put("/:id", upload.single("projectImage"), (req, res) => {
                               );
                               return callback(err);
                             }
-                            console.log(
-                              "Nom du fichier mis à jour dans la base de données."
-                            );
-                            currentProjectName = projectName;
                             callback(null);
                           }
                         );
@@ -311,7 +311,23 @@ router.put("/:id", upload.single("projectImage"), (req, res) => {
                       "SELECT * FROM project WHERE id = ?",
                       [projectId],
                       (err, updatedProjectResults) => {
-                        res.status(200).json(updatedProjectResults[0]);
+                        const updatedProject = updatedProjectResults[0];
+
+                        //Log des changements
+                        if (
+                          currentProjectName !== updatedProject.project_name
+                        ) {
+                          logger.info(
+                            `Project name changed - Old: "${currentProjectName}", New: "${updatedProject.project_name}", Updated at: ${updatedProject.updated_at}`
+                          );
+                        }
+                        if (dbProjectImage !== updatedProject.project_image) {
+                          logger.info(
+                            `Project image changed - Old: "${dbProjectImage}", New: "${updatedProject.project_image}", Updated at: ${updatedProject.updated_at}`
+                          );
+                        }
+
+                        res.status(200).json(updatedProject);
                       }
                     );
                   });
@@ -334,13 +350,11 @@ router.delete("/:id", (req, res) => {
     [projectId],
     (err, results) => {
       if (err) {
-        return res
-          .status(500)
-          .json({ error: "Erreur lors de la récupération du projet." });
+        return res.status(500).json({ error: "Error retrieving project." });
       }
 
       if (results.length === 0) {
-        return res.status(404).json({ error: "Projet non trouvé." });
+        return res.status(404).json({ error: "Project not found." });
       }
 
       const projectName = results[0].project_name;
@@ -350,59 +364,74 @@ router.delete("/:id", (req, res) => {
         "uploads",
         "project_img",
         projectImage.substring(projectImage.lastIndexOf("/") + 1)
-      ); // Chemin vers l'image à supprimer
+      );
 
-      db.query("DELETE FROM project WHERE id = ?", [projectId], (err) => {
-        if (err) {
-          return res
-            .status(500)
-            .json({ error: "Erreur lors de la suppression du projet." });
+      // Nouvelle requête pour récupérer les informations du projet avant la suppression
+      db.query(
+        "SELECT id, project_name, updated_at FROM project WHERE id = ?",
+        [projectId],
+        (err, projectResults) => {
+          if (err) {
+            console.error("Error retrieving project:", err);
+            return res.status(500).json({
+              error: "Error retrieving project.",
+            });
+          }
+
+          if (projectResults.length > 0) {
+            const project = projectResults[0];
+            logger.info(
+              `Project deleted: ID=${project.id}, Name="${project.project_name}", Deleted At=${project.updated_at}`
+            );
+          } else {
+            logger.info(`Project with ID ${projectId} not found.`);
+            return res.status(404).json({ error: "Project not found." });
+          }
+
+          // Suppression du projet après la journalisation
+          db.query("DELETE FROM project WHERE id = ?", [projectId], (err) => {
+            if (err) {
+              return res.status(500).json({ error: "Error deleting project." });
+            }
+
+            fs.access(projectFolder, (err) => {
+              if (!err) {
+                fs.rm(projectFolder, { recursive: true }, (err) => {
+                  if (err) {
+                    console.error("Error deleting folder:", err);
+                  } else {
+                    logger.info("Folder deleted:", projectFolder);
+                  }
+                });
+              } else {
+                logger.info(
+                  "Folder does not exist or has already been deleted:",
+                  projectFolder
+                );
+              }
+            });
+
+            fs.access(projectImageToDelete, (err) => {
+              if (!err) {
+                fs.unlink(projectImageToDelete, (err) => {
+                  if (err) {
+                    console.error("Error deleting image:", err);
+                  } else {
+                    logger.info("Image deleted:", projectImageToDelete);
+                  }
+                });
+              } else {
+                logger.info(
+                  "Image does not exist or has already been deleted:",
+                  projectImageToDelete
+                );
+              }
+            });
+
+            return res.status(204).json();
+          });
         }
-
-        fs.access(projectFolder, (err) => {
-          if (!err) {
-            // Vérifier si le dossier existe avant de le supprimer
-            fs.rm(projectFolder, { recursive: true }, (err) => {
-              if (err) {
-                console.error(
-                  "Erreur lors de la suppression du dossier :",
-                  err
-                );
-              } else {
-                console.log("Dossier supprimé :", projectFolder);
-              }
-            });
-          } else {
-            console.log(
-              "Le dossier n'existe pas ou a déjà été supprimé :",
-              projectFolder
-            );
-          }
-        });
-
-        fs.access(projectImageToDelete, (err) => {
-          if (!err) {
-            // Vérifier si l'image existe avant de la supprimer
-            fs.unlink(projectImageToDelete, (err) => {
-              if (err) {
-                console.error(
-                  "Erreur lors de la suppression de l'image :",
-                  err
-                );
-              } else {
-                console.log("Image supprimée :", projectImageToDelete);
-              }
-            });
-          } else {
-            console.log(
-              "L'image n'existe pas ou a déjà été supprimée :",
-              projectImageToDelete
-            );
-          }
-        });
-
-        return res.status(204).json();
-      });
+      );
     }
   );
 });
@@ -428,15 +457,18 @@ router.get("/export-project-files/:projectId", async (req, res) => {
     // Récupérer tous les chemins de fichiers pour le projet
     const [files] = await db.promise().query(
       `
-      SELECT file.path_file
-      FROM file
-      JOIN section ON file.section_id = section.id
-      WHERE section.project_id = ?
-    `,
+        SELECT file.path_file
+        FROM file
+        JOIN section ON file.section_id = section.id
+        WHERE section.project_id = ?
+      `,
       [projectId]
     );
 
     if (!files || files.length === 0) {
+      logger.info(
+        `Project files export failed: Project ID=${projectId}, Project Name="${projectName}", No files found.`
+      );
       return res
         .status(404)
         .json({ error: "No files found for this project." });
@@ -462,6 +494,12 @@ router.get("/export-project-files/:projectId", async (req, res) => {
       `attachment; filename=${projectName}_files.zip`
     );
     res.send(zipBuffer);
+
+    // Ajout du message de journalisation
+    const now = new Date();
+    logger.info(
+      `Project files exported: Project ID=${projectId}, Project Name="${projectName}", Exported at: ${now.toISOString()}`
+    );
   } catch (error) {
     console.error("Error exporting project files:", error);
     res.status(500).json({ error: "Server error" });
@@ -489,15 +527,18 @@ router.get("/export-project-qr/:projectId", async (req, res) => {
     // Récupérer tous les chemins de fichiers QR pour le projet
     const [files] = await db.promise().query(
       `
-      SELECT file.path_pdf
-      FROM file
-      JOIN section ON file.section_id = section.id
-      WHERE section.project_id = ?
-    `,
+        SELECT file.path_pdf
+        FROM file
+        JOIN section ON file.section_id = section.id
+        WHERE section.project_id = ?
+      `,
       [projectId]
     );
 
     if (!files || files.length === 0) {
+      logger.info(
+        `Project QR codes export failed: Project ID=${projectId}, Project Name="${projectName}", No QR code files found.`
+      );
       return res
         .status(404)
         .json({ error: "No QR code files found for this project." });
@@ -523,10 +564,48 @@ router.get("/export-project-qr/:projectId", async (req, res) => {
       `attachment; filename=${projectName}_qr.zip`
     );
     res.send(zipBuffer);
+
+    // Ajout du message de journalisation
+    const now = new Date();
+    logger.info(
+      `Project QR codes exported: Project ID=${projectId}, Project Name="${projectName}", Exported at: ${now.toISOString()}`
+    );
   } catch (error) {
     console.error("Error exporting project QR codes:", error);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+router.get("/:projectId/search", (req, res) => {
+  const projectId = req.params.projectId;
+  const searchTerm = req.query.term;
+
+  db.query(
+    `SELECT
+    f.*,
+    s.section_name,
+    p.project_name
+    FROM file f
+    JOIN section s ON f.section_id = s.id
+    JOIN project p ON s.project_id = p.id
+    LEFT JOIN tag t ON f.id = t.file_id
+    WHERE p.id = ? AND (
+    f.name LIKE ? OR
+    s.section_name LIKE ? OR
+    t.tag_name LIKE ?
+)
+GROUP BY f.id`,
+    [projectId, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`],
+    (err, results) => {
+      if (err) {
+        console.error("Erreur lors de la recherche de fichiers :", err);
+        return res
+          .status(500)
+          .json({ error: "Erreur lors de la recherche de fichiers." });
+      }
+      res.status(200).json(results);
+    }
+  );
 });
 
 module.exports = router;

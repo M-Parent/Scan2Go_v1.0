@@ -5,8 +5,11 @@ const fs = require("fs");
 const path = require("path");
 const db = require("../db");
 const QRCode = require("qrcode");
+const archiver = require("archiver");
 const PDFDocument = require("pdfkit");
 const os = require("os");
+const AdmZip = require("adm-zip");
+const logger = require("../logger");
 require("dotenv").config();
 
 const storage = multer.diskStorage({
@@ -50,7 +53,7 @@ function getLocalIPv4() {
 router.post("/upload", upload.single("file"), async (req, res) => {
   const { fileName, sectionName, projectName, tags } = req.body;
   const originalFileName = req.file.originalname;
-  const filePath = path.join(
+  const filePath = path.posix.join(
     "uploads",
     projectName,
     sectionName,
@@ -77,10 +80,10 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
     const fileId = insertResults.insertId;
 
-    const serverIP = process.env.SERVER_IP_EXPRESS || getLocalIPv4();
-    const fileUrl = `http://${serverIP}:6301/${filePath.replace(/\\/g, "/")}`;
+    const serverIP = process.env.SERVER_IP_REACT || getLocalIPv4();
+    const fileUrl = `http://${serverIP}/${filePath}`; // Pas de remplacement nécessaire ici, déjà Unix-style
 
-    const pdfPath = path.join(
+    const pdfPath = path.posix.join(
       __dirname,
       "..",
       "uploads",
@@ -93,98 +96,116 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     const doc = new PDFDocument();
     doc.pipe(fs.createWriteStream(pdfPath));
 
-    QRCode.toDataURL(fileUrl, { errorCorrectionLevel: "H" }, (err, url) => {
-      if (err) {
-        console.error("Erreur lors de la génération du QR code :", err);
-        return;
-      }
-
-      // Ajouter le nom du fichier en gras, 48px et centré
-      doc.fontSize(48).font("Helvetica-Bold");
-
-      const textWidth = doc.widthOfString(fileName);
-      const pageWidth = doc.page.width;
-      const textX = (pageWidth - textWidth) / 2;
-      const textY = 50;
-
-      doc.text(fileName, textX, textY);
-
-      // Ajouter ProjectName/SectionName/Filename en 24px, normal, centré
-      doc.fontSize(20).font("Helvetica");
-      const subText = `${projectName} / ${sectionName} / ${fileName}`;
-      const subTextWidth = doc.widthOfString(subText);
-      const subTextX = (pageWidth - subTextWidth) / 2;
-      const subTextY = textY + 100; // Ajustez la position verticale
-      doc.text(subText, subTextX, subTextY);
-
-      // Ajouter les tags en 24px, normal, centré
-      if (tags && tags.length > 0) {
-        doc.fontSize(20).font("Helvetica");
-        const tagsText = Array.isArray(tags) ? tags.join(", ") : tags;
-        const tagsTextWidth = doc.widthOfString(tagsText);
-        const tagsTextX = (pageWidth - tagsTextWidth) / 2;
-        const tagsTextY = subTextY + 70; // Ajustez la position verticale
-        doc.text(tagsText, tagsTextX, tagsTextY);
-      }
-
-      // Centrer le QR code
-      const qrCodeWidth = 250;
-      const qrCodeHeight = 250;
-      const pageHeight = doc.page.height;
-      const x = (pageWidth - qrCodeWidth) / 2;
-      let y = 0;
-      if (tags && tags.length > 0) {
-        y = (pageHeight - qrCodeHeight) / 2;
-      } else {
-        y = (pageHeight - qrCodeHeight) / 2;
-      }
-
-      doc.image(url, x, y, {
-        fit: [qrCodeWidth, qrCodeHeight],
-        align: "center",
-        valign: "center",
-      });
-
-      doc.end();
-    });
-
-    const pdfRelativePath = path.win32.relative(
-      path.win32.join(__dirname, ".."),
-      pdfPath
-    );
-    await db
-      .promise()
-      .query("UPDATE file SET url_qr_code = ?, path_pdf = ? WHERE id = ?", [
-        fileUrl,
-        pdfRelativePath.replace(/\\/g, "\\"),
-        fileId,
-      ]);
-
-    if (tags && tags.length > 0) {
-      if (Array.isArray(tags)) {
-        for (const tagName of tags) {
-          await db
-            .promise()
-            .query("INSERT INTO tag (file_id, tag_name) VALUES (?, ?)", [
-              fileId,
-              tagName,
-            ]);
+    QRCode.toDataURL(
+      fileUrl,
+      { errorCorrectionLevel: "H" },
+      async (err, url) => {
+        if (err) {
+          console.error("Erreur lors de la génération du QR code :", err);
+          return;
         }
-      } else {
+
+        doc.fontSize(48).font("Helvetica-Bold");
+
+        const textWidth = doc.widthOfString(fileName);
+        const pageWidth = doc.page.width;
+        const textX = (pageWidth - textWidth) / 2;
+        const textY = 50;
+
+        doc.text(fileName, textX, textY);
+
+        doc.fontSize(20).font("Helvetica");
+        const subText = `${projectName} / ${sectionName} / ${fileName}`;
+        const subTextWidth = doc.widthOfString(subText);
+        const subTextX = (pageWidth - subTextWidth) / 2;
+        const subTextY = textY + 100;
+        doc.text(subText, subTextX, subTextY);
+
+        if (tags && tags.length > 0) {
+          doc.fontSize(20).font("Helvetica");
+          const tagsText = Array.isArray(tags) ? tags.join(", ") : tags;
+          const tagsTextWidth = doc.widthOfString(tagsText);
+          const tagsTextX = (pageWidth - tagsTextWidth) / 2;
+          const tagsTextY = subTextY + 70;
+          doc.text(tagsText, tagsTextX, tagsTextY);
+        }
+
+        const qrCodeWidth = 250;
+        const qrCodeHeight = 250;
+        const pageHeight = doc.page.height;
+        const x = (pageWidth - qrCodeWidth) / 2;
+        let y = 0;
+        if (tags && tags.length > 0) {
+          y = (pageHeight - qrCodeHeight) / 2;
+        } else {
+          y = (pageHeight - qrCodeHeight) / 2;
+        }
+
+        doc.image(url, x, y, {
+          fit: [qrCodeWidth, qrCodeHeight],
+          align: "center",
+          valign: "center",
+        });
+
+        // Ajouter l'URL du QR code en dessous du QR code
+        doc.fontSize(12).font("Helvetica");
+        const urlTextWidth = doc.widthOfString(fileUrl);
+        const urlTextX = (pageWidth - urlTextWidth) / 2;
+        const urlTextY = y + qrCodeHeight + 70;
+        doc.text(fileUrl, urlTextX, urlTextY);
+
+        doc.end();
+
+        const pdfRelativePath = path.posix.relative(
+          // Utilisation de path.posix
+          path.posix.join(__dirname, ".."), // Utilisation de path.posix
+          pdfPath
+        );
+
         await db
           .promise()
-          .query("INSERT INTO tag (file_id, tag_name) VALUES (?, ?)", [
+          .query("UPDATE file SET url_qr_code = ?, path_pdf = ? WHERE id = ?", [
+            fileUrl,
+            pdfRelativePath,
             fileId,
-            tags,
           ]);
-      }
-    }
 
-    res
-      .status(200)
-      .send(
-        "Fichier téléchargé, QR code généré dans un PDF et informations enregistrées avec succès."
-      );
+        if (tags && tags.length > 0) {
+          if (Array.isArray(tags)) {
+            for (const tagName of tags) {
+              await db
+                .promise()
+                .query("INSERT INTO tag (file_id, tag_name) VALUES (?, ?)", [
+                  fileId,
+                  tagName,
+                ]);
+            }
+          } else {
+            await db
+              .promise()
+              .query("INSERT INTO tag (file_id, tag_name) VALUES (?, ?)", [
+                fileId,
+                tags,
+              ]);
+          }
+        }
+
+        const [fileInfo] = await db
+          .promise()
+          .query("SELECT created_at FROM file WHERE id = ?", [fileId]);
+        const createdAt = fileInfo[0].created_at;
+
+        logger.info(
+          `File uploaded: ID="${fileId}", File name: "${fileName}", In Section: "${sectionName}", of Project: "${projectName}", Uploaded At: "${createdAt}"`
+        );
+
+        res
+          .status(200)
+          .send(
+            "Fichier téléchargé, QR code généré dans un PDF et informations enregistrées avec succès."
+          );
+      }
+    );
   } catch (err) {
     console.error("Erreur lors de l'insertion dans la base de données :", err);
     return res
@@ -277,20 +298,20 @@ router.get("/files/:fileId/tags", async (req, res) => {
 
 router.get("/files/:fileId", async (req, res) => {
   const { fileId } = req.params;
-  console.log(`Récupération du fichier avec l'ID : ${fileId}`);
+  logger.info(`Récupération du fichier avec l'ID : ${fileId}`);
   try {
     const sql = "SELECT * FROM file WHERE id = ?"; // Stocker la requête dans une variable
-    console.log("Requête SQL :", sql, [fileId]); // Afficher la requête et les paramètres
+    logger.info("Requête SQL :", sql, [fileId]); // Afficher la requête et les paramètres
     const [files] = await db.promise().query(sql, [fileId]);
 
-    console.log("Résultat de la requête SQL :", files);
+    logger.info("Résultat de la requête SQL :", files);
 
     if (files.length === 0) {
-      console.log(`Fichier avec l'ID : ${fileId} non trouvé.`);
+      logger.info(`Fichier avec l'ID : ${fileId} non trouvé.`);
       return res.status(404).json({ error: "Fichier non trouvé." });
     }
 
-    console.log(`Fichier avec l'ID : ${fileId} trouvé :`, files);
+    logger.info(`Fichier avec l'ID : ${fileId} trouvé :`, files);
     res.json(files);
   } catch (err) {
     console.error("Erreur lors de la récupération du fichier :", err);
@@ -299,11 +320,11 @@ router.get("/files/:fileId", async (req, res) => {
   }
 });
 
-router.delete("/files/:fileId", async (req, res) => {
-  const { fileId } = req.params;
+router.get("/download/:fileId", async (req, res) => {
+  const fileId = req.params.fileId;
 
   try {
-    // 1. Récupérer les informations du fichier depuis la base de données
+    // Récupérer les informations du fichier depuis la base de données
     const [fileResults] = await db
       .promise()
       .query("SELECT * FROM file WHERE id = ?", [fileId]);
@@ -314,9 +335,73 @@ router.delete("/files/:fileId", async (req, res) => {
 
     const file = fileResults[0];
     const filePath = path.join(__dirname, "..", file.path_file);
-    const pdfPath = path.join(__dirname, "..", file.path_pdf);
+    const folderPath = path.dirname(filePath);
 
-    // 2. Supprimer le fichier et le PDF du système de fichiers
+    // Vérifier si le dossier existe
+    if (!fs.existsSync(folderPath)) {
+      return res.status(404).json({ error: "Dossier du fichier introuvable." });
+    }
+
+    // Créer une archive ZIP du dossier
+    const zip = new AdmZip();
+    zip.addLocalFolder(folderPath);
+    const zipBuffer = zip.toBuffer();
+
+    // Définir les en-têtes de réponse pour le téléchargement
+    res.set("Content-Type", "application/zip");
+    res.set("Content-Disposition", `attachment; filename="${file.name}.zip"`); // Utiliser le nom du fichier
+    res.send(zipBuffer);
+  } catch (err) {
+    console.error("Erreur lors du téléchargement du fichier :", err);
+    return res
+      .status(500)
+      .json({ error: "Erreur serveur lors du téléchargement." });
+  }
+});
+
+router.delete("/files/:fileId", async (req, res) => {
+  const { fileId } = req.params;
+
+  try {
+    // 1. Récupérer les informations du fichier depuis la base de données
+    const [fileResults] = await db
+      .promise()
+      .query("SELECT *, updated_at FROM file WHERE id = ?", [fileId]);
+
+    if (fileResults.length === 0) {
+      return res.status(404).json({ error: "Fichier non trouvé." });
+    }
+
+    const file = fileResults[0];
+    const filePath = path.join(__dirname, "..", file.path_file);
+    const pdfPath = path.join(__dirname, "..", file.path_pdf);
+    const updatedAt = file.updated_at;
+
+    // 2. Récupérer le nom de la section et du projet
+    const [sectionResults] = await db
+      .promise()
+      .query("SELECT section_name, project_id FROM section WHERE id = ?", [
+        file.section_id,
+      ]);
+
+    if (sectionResults.length === 0) {
+      return res.status(404).json({ error: "Section non trouvée." });
+    }
+
+    const sectionName = sectionResults[0].section_name;
+    const projectId = sectionResults[0].project_id;
+
+    const [projectResults] = await db
+      .promise()
+      .query("SELECT project_name FROM project WHERE id = ?", [projectId]);
+
+    if (projectResults.length === 0) {
+      return res.status(404).json({ error: "Projet non trouvé." });
+    }
+
+    const projectName = projectResults[0].project_name;
+
+    // 3. Supprimer le fichier et le PDF du système de fichiers
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -324,17 +409,22 @@ router.delete("/files/:fileId", async (req, res) => {
       fs.unlinkSync(pdfPath);
     }
 
-    // 3. Supprimer le dossier contenant le fichier
+    // 4. Supprimer le dossier contenant le fichier
     const folderPath = path.dirname(filePath);
     if (fs.existsSync(folderPath) && fs.readdirSync(folderPath).length === 0) {
       fs.rmdirSync(folderPath);
     }
 
-    // 4. Supprimer l'entrée du fichier de la base de données
+    // 5. Supprimer l'entrée du fichier de la base de données
     await db.promise().query("DELETE FROM file WHERE id = ?", [fileId]);
 
-    // 5. Supprimer les tags associés au fichier
+    // 6. Supprimer les tags associés au fichier
     await db.promise().query("DELETE FROM tag WHERE file_id = ?", [fileId]);
+
+    // Journalisation de la suppression du fichier
+    logger.info(
+      `File deleted: ID="${fileId}", File name: "${file.name}", Path file: "${file.path_file}", Path pdf: "${file.path_pdf}", In Section: "${sectionName}", Of Project: "${projectName}", Deleted At: "${updatedAt}"`
+    );
 
     res.json({ message: "Fichier supprimé avec succès." });
   } catch (err) {
@@ -350,7 +440,6 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
   const { fileName, projectName, sectionName, tags } = req.body;
   const newFile = req.file;
 
-  // Fonction pour générer le PDF et le QR code
   const generatePdfAndQrCode = (
     fileUrl,
     pdfPath,
@@ -364,37 +453,33 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
       doc.pipe(fs.createWriteStream(pdfPath));
 
       QRCode.toDataURL(fileUrl, { errorCorrectionLevel: "H" }, (err, url) => {
-        if (err) {
-          return reject("Erreur lors de la génération du QR code.");
-        }
+        if (err) return reject("Erreur lors de la génération du QR code.");
 
-        // Ajouter le nom du fichier en gras, 48px et centré
         doc.fontSize(48).font("Helvetica-Bold");
+
         const textWidth = doc.widthOfString(fileName);
         const pageWidth = doc.page.width;
         const textX = (pageWidth - textWidth) / 2;
         const textY = 50;
+
         doc.text(fileName, textX, textY);
 
-        // Ajouter ProjectName/SectionName/Filename en 24px, normal, centré
         doc.fontSize(20).font("Helvetica");
         const subText = `${projectName} / ${sectionName} / ${fileName}`;
         const subTextWidth = doc.widthOfString(subText);
         const subTextX = (pageWidth - subTextWidth) / 2;
-        const subTextY = textY + 100; // Ajustez la position verticale
+        const subTextY = textY + 100;
         doc.text(subText, subTextX, subTextY);
 
-        // Ajouter les tags en 24px, normal, centré
         if (tags && tags.length > 0) {
           doc.fontSize(20).font("Helvetica");
           const tagsText = Array.isArray(tags) ? tags.join(", ") : tags;
           const tagsTextWidth = doc.widthOfString(tagsText);
           const tagsTextX = (pageWidth - tagsTextWidth) / 2;
-          const tagsTextY = subTextY + 70; // Ajustez la position verticale
+          const tagsTextY = subTextY + 70;
           doc.text(tagsText, tagsTextX, tagsTextY);
         }
 
-        // Centrer le QR code
         const qrCodeWidth = 250;
         const qrCodeHeight = 250;
         const pageHeight = doc.page.height;
@@ -412,42 +497,47 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
           valign: "center",
         });
 
-        doc.end();
+        // Ajouter l'URL du QR code en dessous du QR code
+        doc.fontSize(12).font("Helvetica");
+        const urlTextWidth = doc.widthOfString(fileUrl);
+        const urlTextX = (pageWidth - urlTextWidth) / 2;
+        const urlTextY = y + qrCodeHeight + 70;
+        doc.text(fileUrl, urlTextX, urlTextY);
 
+        doc.end();
         resolve();
       });
     });
   };
 
   try {
-    // Récupérer les informations actuelles du fichier
     const [existingFiles] = await db
       .promise()
       .query("SELECT * FROM file WHERE id = ?", [fileId]);
-
-    if (existingFiles.length === 0) {
+    if (existingFiles.length === 0)
       return res.status(404).json({ error: "Fichier non trouvé." });
-    }
 
     const oldFileName = existingFiles[0].name;
     const oldFilePath = path.join(__dirname, "..", existingFiles[0].path_file);
-    const oldFolderPath = path.dirname(oldFilePath); // Dossier actuel du fichier
-    const parentFolder = path.join(
+    const oldFolderPath = path.dirname(oldFilePath);
+    const parentFolder = path.posix.join(
+      // Utilisation de path.posix
       __dirname,
       "..",
       "uploads",
       projectName,
       sectionName
     );
-    const newFolderPath = path.join(parentFolder, fileName); // Nouveau dossier si fileName change
-    const newFilePath = path.resolve(
+    const newFolderPath = path.posix.join(parentFolder, fileName); // Utilisation de path.posix
+    const newFilePath = path.posix.resolve(
+      // Utilisation de path.posix
       newFolderPath,
       newFile ? newFile.originalname : path.basename(oldFilePath)
     );
 
-    // Supprimer l'ancien PDF avant de renommer le dossier
     if (oldFileName !== fileName) {
-      const oldPdfPath = path.join(
+      const oldPdfPath = path.posix.join(
+        // Utilisation de path.posix
         __dirname,
         "..",
         "uploads",
@@ -456,77 +546,36 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
         oldFileName,
         `${oldFileName}_qr.pdf`
       );
-
-      console.log("Chemin de l'ancien PDF :", oldPdfPath); // Debugging pour vérifier le chemin
-
-      if (fs.existsSync(oldPdfPath)) {
-        try {
-          fs.unlinkSync(oldPdfPath); // Supprimer l'ancien PDF
-          console.log("Ancien PDF supprimé avec succès.");
-        } catch (unlinkErr) {
-          console.error(
-            "Erreur lors de la suppression de l'ancien PDF :",
-            unlinkErr
-          );
-          return res
-            .status(500)
-            .json({ error: "Erreur lors de la suppression de l'ancien PDF." });
-        }
-      } else {
-        console.log("L'ancien PDF n'existe pas à ce chemin.");
-      }
-
-      // Renommer le dossier une fois le PDF supprimé
-      if (fs.existsSync(oldFolderPath)) {
-        try {
-          fs.renameSync(oldFolderPath, newFolderPath);
-          console.log("Dossier renommé avec succès.");
-        } catch (renameErr) {
-          return res
-            .status(500)
-            .json({ error: "Erreur lors du renommage du dossier." });
-        }
-      }
+      if (fs.existsSync(oldPdfPath)) fs.unlinkSync(oldPdfPath);
+      if (fs.existsSync(oldFolderPath))
+        fs.renameSync(oldFolderPath, newFolderPath);
     }
 
-    // Si un nouveau fichier est fourni, supprimer l'ancien fichier et enregistrer le nouveau
     if (newFile) {
-      if (!fs.existsSync(newFolderPath)) {
+      if (!fs.existsSync(newFolderPath))
         fs.mkdirSync(newFolderPath, { recursive: true });
+
+      const oldZipFilePath = path.posix.join(
+        // Utilisation de path.posix
+        newFolderPath,
+        path.basename(oldFilePath)
+      );
+      if (fs.existsSync(oldZipFilePath)) {
+        fs.unlinkSync(oldZipFilePath);
       }
 
-      if (fs.existsSync(oldFilePath)) {
-        try {
-          fs.unlinkSync(oldFilePath); // Supprimer l'ancien fichier
-        } catch (unlinkErr) {
-          return res.status(500).json({
-            error: "Erreur lors de la suppression de l'ancien fichier.",
-          });
-        }
-      }
-
-      try {
-        fs.renameSync(newFile.path, newFilePath); // Déplacer le nouveau fichier
-      } catch (fileRenameErr) {
-        return res
-          .status(500)
-          .json({ error: "Erreur lors du déplacement du fichier uploadé." });
-      }
+      fs.renameSync(newFile.path, newFilePath);
     }
 
-    // Mise à jour du chemin relatif pour la base de données
-    const newFileRelativePath = path.win32
-      .relative(path.win32.join(__dirname, "..", "uploads"), newFilePath)
-      .replace(/\//g, "\\"); // Remplacer les slashes par des backslashes pour le chemin Windows
-
-    const serverIP = process.env.SERVER_IP_EXPRESS || getLocalIPv4();
-    const fileUrl = `http://${serverIP}:6301/uploads/${newFileRelativePath.replace(
-      /\\/g,
-      "/"
-    )}`;
-
-    // Définir le chemin du nouveau PDF
-    const pdfPath = path.win32.join(
+    const newFileRelativePath = path.posix.relative(
+      // Utilisation de path.posix
+      path.posix.join(__dirname, "..", "uploads"), // Utilisation de path.posix
+      newFilePath
+    );
+    const serverIP = process.env.SERVER_IP_REACT || getLocalIPv4();
+    const fileUrl = `http://${serverIP}/uploads/${newFileRelativePath}`; // Pas de remplacement nécessaire, déjà Unix-style
+    const pdfPath = path.posix.join(
+      // Utilisation de path.posix
       __dirname,
       "..",
       "uploads",
@@ -536,7 +585,6 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
       `${fileName}_qr.pdf`
     );
 
-    // Appeler la fonction pour générer le PDF et QR code
     await generatePdfAndQrCode(
       fileUrl,
       pdfPath,
@@ -546,62 +594,56 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
       tags
     );
 
-    // Remplacer les slashes par des backslashes pour le PDF path
-    const pdfRelativePath = path.win32
-      .relative(path.win32.join(__dirname, ".."), pdfPath)
-      .replace(/\//g, "\\"); // Remplacer les slashes par des backslashes pour le chemin Windows
-
+    const pdfRelativePath = path.posix.relative(
+      // Utilisation de path.posix
+      path.posix.join(__dirname, ".."), // Utilisation de path.posix
+      pdfPath
+    );
     await db
       .promise()
       .query(
         "UPDATE file SET name = ?, path_file = ?, url_qr_code = ?, path_pdf = ? WHERE id = ?",
         [
           fileName,
-          `uploads\\${newFileRelativePath}`, // Utilisation des backslashes pour path_file
+          `uploads/${newFileRelativePath}`, // Utilisation de /
           fileUrl,
-          pdfRelativePath, // Utilisation des backslashes pour path_pdf
+          pdfRelativePath,
           fileId,
         ]
       );
 
-    // Gestion des tags
     if (tags && tags.length > 0) {
       const tagNames = Array.isArray(tags) ? tags : [tags];
-
-      // Récupérer les tags existants pour ce fichier
       const [existingTags] = await db
         .promise()
         .query("SELECT tag_name FROM tag WHERE file_id = ?", [fileId]);
       const existingTagNames = existingTags.map((tag) => tag.tag_name);
 
-      // Ajouter les nouveaux tags et ignorer les doublons
       for (const tagName of tagNames) {
-        if (!existingTagNames.includes(tagName)) {
+        if (!existingTagNames.includes(tagName))
           await db
             .promise()
             .query("INSERT INTO tag (file_id, tag_name) VALUES (?, ?)", [
               fileId,
               tagName,
             ]);
-        }
       }
-
-      // Supprimer les tags qui ne sont plus présents
       for (const existingTagName of existingTagNames) {
-        if (!tagNames.includes(existingTagName)) {
+        if (!tagNames.includes(existingTagName))
           await db
             .promise()
             .query("DELETE FROM tag WHERE file_id = ? AND tag_name = ?", [
               fileId,
               existingTagName,
             ]);
-        }
       }
     } else {
-      // Si aucun tag n'est envoyé, supprimer tous les tags existants
       await db.promise().query("DELETE FROM tag WHERE file_id = ?", [fileId]);
     }
 
+    logger.info(
+      `File updated: ID="${fileId}", Old name: "${oldFileName}", New name: "${fileName}", New Path file: "${newFileRelativePath}", New Path PDF: "${pdfRelativePath}", In Section: "${sectionName}", Of Project: "${projectName}"`
+    );
     res.status(200).json({ message: "Fichier mis à jour avec succès." });
   } catch (err) {
     console.error("Erreur lors de la mise à jour du fichier :", err);
@@ -609,6 +651,35 @@ router.put("/files/:fileId", upload.single("file"), async (req, res) => {
       .status(500)
       .json({ error: "Erreur serveur lors de la mise à jour du fichier." });
   }
+});
+
+router.get("/checkFileExists", async (req, res) => {
+  const { projectName, sectionName, fileName, checkFileName } = req.query;
+
+  if (!projectName || !sectionName || !fileName || !checkFileName) {
+    return res
+      .status(400)
+      .json({ error: "Project, section, file, or checkFileName missing." });
+  }
+
+  const filePath = path.join(
+    __dirname,
+    "..",
+    "uploads",
+    projectName,
+    sectionName,
+    fileName,
+    checkFileName
+  );
+
+  fs.access(filePath, fs.constants.F_OK, (err) => {
+    if (err) {
+      // File does not exist
+      return res.json({ exists: false });
+    }
+    // File exists
+    return res.json({ exists: true });
+  });
 });
 
 module.exports = router;

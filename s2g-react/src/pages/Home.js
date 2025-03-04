@@ -6,6 +6,7 @@ import { Modal } from "../component/molecules/modal/Modal";
 import { ModalAddProject } from "../component/molecules/modal/ModalAddProject";
 import { ModalEditProject } from "../component/molecules/modal/ModalEditProject";
 import { CardProject } from "../component/molecules/CardProject";
+import API_BASE_URL from "../api";
 import { Link } from "react-router-dom";
 
 export function Home() {
@@ -17,7 +18,7 @@ export function Home() {
   const fetchProjects = useCallback(async () => {
     // useCallback for memoization
     try {
-      const response = await fetch("/api/projects");
+      const response = await fetch(`${API_BASE_URL}/api/projects`);
       if (response.ok) {
         const data = await response.json();
         setProjects(data);
@@ -47,13 +48,16 @@ export function Home() {
 
   const handleProjectUpdated = async (updatedProject) => {
     try {
-      const response = await fetch(`/api/projects/${updatedProject.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedProject),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/projects/${updatedProject.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedProject),
+        }
+      );
 
       if (response.ok) {
         const updatedProjectFromServer = await response.json();
@@ -82,9 +86,12 @@ export function Home() {
 
   const handleDeleteProject = async (projectId) => {
     try {
-      const response = await fetch(`/api/projects/${projectId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/projects/${projectId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (response.ok) {
         setProjects(

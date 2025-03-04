@@ -115,6 +115,36 @@ export function ModalEditFile({
       return; // Prevent submission if file name exists
     }
 
+    // Check if selected file already exists
+    if (selectedFile) {
+      try {
+        const fileExistsResponse = await fetch(
+          `${API_BASE_URL}/api/uploadFile/checkFileExists?projectName=${projectName}&sectionName=${sectionName}&fileName=${fileName}&checkFileName=${selectedFile.name}`
+        );
+
+        if (!fileExistsResponse.ok) {
+          console.error(
+            "Error checking file existence:",
+            fileExistsResponse.status,
+            fileExistsResponse.statusText
+          );
+          return; // Prevent submission if there's an error
+        }
+
+        const fileExistsData = await fileExistsResponse.json();
+        console.log("fileExistsData:", fileExistsData); // Add this line
+
+        if (fileExistsData.exists) {
+          alert(`${selectedFile.name} already exists in this folder.`); // Or use a more sophisticated error message
+          return; // Prevent submission if file exists
+        }
+      } catch (error) {
+        console.error("Error checking file existence:", error);
+        return; // Prevent submission if there's an error checking
+      }
+    }
+
+    // Rest of your handleSubmit logic...
     const tagsToDelete = existingTags.filter((tag) => !tags.includes(tag));
 
     if (tagsToDelete.length > 0) {

@@ -39,6 +39,31 @@ export function Table({
     }
   };
 
+  const handleDownloadFile = async (fileId, fileName) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/uploadFile/download/${fileId}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${fileName}.zip`; // Utilisation du fileName fourni
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove(); // Nettoyage de l'élément a
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      alert("Failed to download file.");
+    }
+  };
+
   const handleEditFile = (file) => {
     setSelectedFileToEdit(file);
     setSelectedSectionLocal(section);
@@ -50,27 +75,6 @@ export function Table({
     setSelectedFileToEdit(null);
   };
 
-  const handleDownloadFile = async (fileUrl, fileName) => {
-    try {
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName; // Nom du fichier pour le téléchargement
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url); // Nettoyer l'URL temporaire
-      document.body.removeChild(a); // Nettoyer l'élément a
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      alert("Failed to download file.");
-    }
-  };
-
   const fetchFileTags = async (fileId) => {
     try {
       const response = await fetch(
@@ -80,11 +84,6 @@ export function Table({
         throw new Error("Failed to fetch tags");
       }
       const tags = await response.json();
-      // Mettre à jour fileTags ici
-      setFileTags((prevTags) => ({
-        ...prevTags,
-        [fileId]: tags,
-      }));
       return tags;
     } catch (error) {
       console.error("Error fetching file tags:", error);
@@ -92,25 +91,38 @@ export function Table({
     }
   };
 
+  useEffect(() => {
+    const fetchAllFileTags = async () => {
+      if (sectionFiles && sectionFiles[section.id] && section.id) {
+        const tagsPromises = sectionFiles[section.id].map(async (file) => {
+          const tags = await fetchFileTags(file.id);
+          return { fileId: file.id, tags };
+        });
+
+        const tagsResults = await Promise.all(tagsPromises);
+
+        setFileTags((prevTags) => {
+          const updatedTags = { ...prevTags };
+          tagsResults.forEach(({ fileId, tags }) => {
+            updatedTags[fileId] = tags;
+          });
+          return updatedTags;
+        });
+      }
+    };
+
+    fetchAllFileTags();
+  }, [sectionFiles, section.id]);
+
   const handleFileUploaded = async () => {
     await fetchSectionFiles(section.id);
     // Mettre à jour les tags après la mise à jour des fichiers
     if (selectedFileToEdit) {
       fetchFileTags(selectedFileToEdit.id);
     }
+    window.location.reload();
   };
 
-  useEffect(() => {
-    // Mettre à jour les tags lorsque sectionFiles change
-    const updateFileTags = async () => {
-      if (sectionFiles[section.id]) {
-        for (const file of sectionFiles[section.id]) {
-          await fetchFileTags(file.id);
-        }
-      }
-    };
-    updateFileTags();
-  }, [sectionFiles, section.id]);
   const handleDeleteFile = async (fileId, sectionId) => {
     const confirmDelete = window.confirm(
       "Êtes-vous sûr de vouloir supprimer ce fichier ?"
@@ -149,6 +161,29 @@ export function Table({
   };
 
   useEffect(() => {
+    const fetchAllFileTags = async () => {
+      if (sectionFiles[section.id]) {
+        const tagsPromises = sectionFiles[section.id].map(async (file) => {
+          const tags = await fetchFileTags(file.id);
+          return { fileId: file.id, tags };
+        });
+
+        const tagsResults = await Promise.all(tagsPromises);
+
+        setFileTags((prevTags) => {
+          const updatedTags = { ...prevTags };
+          tagsResults.forEach(({ fileId, tags }) => {
+            updatedTags[fileId] = tags;
+          });
+          return updatedTags;
+        });
+      }
+    };
+
+    fetchAllFileTags();
+  }, [sectionFiles, section.id]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       console.log("Click detecter", event.target);
       if (showQrCodePopup) {
@@ -174,6 +209,10 @@ export function Table({
     }
     if (showQrCodePopup) {
       setShowQrCodePopup(false);
+      setQrCodeUrl(null); // Réinitialiser l'URL du QR code
+      return;
+    }
+    if (!url) {
       return;
     }
     try {
@@ -241,7 +280,7 @@ export function Table({
                   <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center">
                     <div
                       ref={popupRef}
-                      className=" py-6 px-12 Glassmorphgisme-noHover"
+                      className=" py-6 px-12 Glassmorphgisme-noHover "
                     >
                       <p className="text-white text-2xl pb-6">
                         {currentProjectName} / {currentSectionName} /{" "}
@@ -279,22 +318,12 @@ export function Table({
                       {tag}
                     </span>
                   ))}
-                  {/* Si les tags ne sont pas encore chargés, les récupérer */}
-                  {!fileTags[file.id] &&
-                    fetchFileTags(file.id).then((tags) =>
-                      setFileTags((prevTags) => ({
-                        ...prevTags,
-                        [file.id]: tags,
-                      }))
-                    )}
                 </div>
               </th>
               <th className="px-1 sm:px-6 sm:py-4">
                 <div className="flex justify-end ">
                   <button
-                    onClick={() =>
-                      handleDownloadFile(file.url_qr_code, file.name)
-                    }
+                    onClick={() => handleDownloadFile(file.id, file.name)}
                   >
                     <img
                       className="me-2"

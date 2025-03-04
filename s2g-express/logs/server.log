@@ -1,0 +1,146 @@
+2025-03-02 15:29:10 info: Server running on Port : 6301
+2025-03-02 15:29:10 info: Connecté à la base de données MySQL!
+2025-03-02 15:29:10 info: Table "project" créée ou déjà existante.
+2025-03-02 15:29:10 info: Table "section" créée ou déjà existante.
+2025-03-02 15:29:10 info: Table "file" créée ou déjà existante.
+2025-03-02 15:29:10 info: Table "tag" créée ou déjà existante.
+2025-03-02 15:29:53 info: Section created: ID = 132, section name: "QGET" for project name: "TAK", Created at: Sun Mar 02 2025 20:29:53 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:30:14 info: File uploaded: ID="222", File name: "9TAC", In Section: "QGET", of Project: "TAK", Uploaded At: "Sun Mar 02 2025 20:30:13 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:30:29 info: Section created: ID = 133, section name: "1R22R" for project name: "TAK", Created at: Sun Mar 02 2025 20:30:29 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:30:29 info: Section created: ID = 134, section name: "2R22R" for project name: "TAK", Created at: Sun Mar 02 2025 20:30:29 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:30:41 info: File uploaded: ID="223", File name: "T4", In Section: "1R22R", of Project: "TAK", Uploaded At: "Sun Mar 02 2025 20:30:41 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:30:50 info: File uploaded: ID="224", File name: "G3", In Section: "2R22R", of Project: "TAK", Uploaded At: "Sun Mar 02 2025 20:30:50 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:31:42 info: File deleted: ID="224", File name: "G3", Path file: "uploads\TAK\2R22R\G3\test123.zip", Path pdf: "uploads\TAK\2R22R\G3\G3_qr.pdf", In Section: "2R22R", Of Project: "TAK", Deleted At: "Sun Mar 02 2025 20:30:50 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:31:46 info: Section deleted: ID = 134, section name: "2R22R" for project name: "TAK", deleted at: Sun Mar 02 2025 20:30:29 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:32:18 info: Section name changed - Old Name: "QGET", New Name: "QGET2", for project: "TAK", Updated at: Sun Mar 02 2025 20:29:53 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:37:42 info: Fermeture du serveur...
+2025-03-02 15:37:45 info: Server running on Port : 6301
+2025-03-02 15:37:45 info: Connecté à la base de données MySQL!
+2025-03-02 15:37:45 info: Table "project" créée ou déjà existante.
+2025-03-02 15:37:45 info: Table "section" créée ou déjà existante.
+2025-03-02 15:37:45 info: Table "file" créée ou déjà existante.
+2025-03-02 15:37:46 info: Table "tag" créée ou déjà existante.
+2025-03-02 15:37:53 info: Updated file paths for file ID 222 - Old path: TAK/QGET2/, New path: TAK/QGET/
+2025-03-02 15:37:53 info: Section name changed - Old Name: "QGET2", New Name: "QGET", for project: "TAK", Updated at: Sun Mar 02 2025 20:32:18 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:38:07 info: Updated file paths for file ID 222 - Old path: TAK/QGET/, New path: TAK/QGET2/
+2025-03-02 15:38:07 info: Section name changed - Old Name: "QGET", New Name: "QGET2", for project: "TAK", Updated at: Sun Mar 02 2025 20:37:53 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:42:33 info: Fermeture du serveur...
+2025-03-02 15:42:36 info: Server running on Port : 6301
+2025-03-02 15:42:36 info: Connecté à la base de données MySQL!
+2025-03-02 15:42:36 info: Table "project" créée ou déjà existante.
+2025-03-02 15:42:36 info: Table "section" créée ou déjà existante.
+2025-03-02 15:42:36 info: Table "file" créée ou déjà existante.
+2025-03-02 15:42:36 info: Table "tag" créée ou déjà existante.
+2025-03-02 15:42:50 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET2\, New path: uploads\TAK\QGET\
+2025-03-02 15:42:50 info: Section name changed - Old Name: "QGET2", New Name: "QGET", for project: "TAK", Updated at: Sun Mar 02 2025 20:38:07 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:43:16 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET\, New path: uploads\TAK\QGET2\
+2025-03-02 15:43:16 info: Section name changed - Old Name: "QGET", New Name: "QGET2", for project: "TAK", Updated at: Sun Mar 02 2025 20:42:50 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:43:29 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET2\, New path: uploads\TAK\QGET\
+2025-03-02 15:43:29 info: Section name changed - Old Name: "QGET2", New Name: "QGET", for project: "TAK", Updated at: Sun Mar 02 2025 20:43:16 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:45:09 info: Fermeture du serveur...
+2025-03-02 15:45:12 info: Server running on Port : 6301
+2025-03-02 15:45:12 info: Connecté à la base de données MySQL!
+2025-03-02 15:45:12 info: Table "project" créée ou déjà existante.
+2025-03-02 15:45:12 info: Table "section" créée ou déjà existante.
+2025-03-02 15:45:12 info: Table "file" créée ou déjà existante.
+2025-03-02 15:45:12 info: Table "tag" créée ou déjà existante.
+2025-03-02 15:45:15 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET\, New path: uploads\TAK\QGET2\
+2025-03-02 15:45:15 info: Section name changed - Old Name: "QGET", New Name: "QGET2", for project: "TAK", Updated at: Sun Mar 02 2025 20:43:29 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:45:28 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET2\, New path: uploads\TAK\QGET\
+2025-03-02 15:45:28 info: Section name changed - Old Name: "QGET2", New Name: "QGET", for project: "TAK", Updated at: Sun Mar 02 2025 20:45:15 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:45:41 info: Section created: ID = 135, section name: "QGET" for project name: "Sitaware", Created at: Sun Mar 02 2025 20:45:41 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:45:53 info: File uploaded: ID="225", File name: "test", In Section: "QGET", of Project: "Sitaware", Uploaded At: "Sun Mar 02 2025 20:45:52 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:46:05 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET\, New path: uploads\TAK\QGET2\
+2025-03-02 15:46:05 info: Updated file paths for file ID 225 - Old path: uploads\TAK\QGET\, New path: uploads\TAK\QGET2\
+2025-03-02 15:46:05 info: Section name changed - Old Name: "QGET", New Name: "QGET2", for project: "TAK", Updated at: Sun Mar 02 2025 20:45:28 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:46:51 info: Section deleted: ID = 135, section name: "QGET" for project name: "Sitaware", deleted at: Sun Mar 02 2025 20:45:41 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:46:56 info: Section created: ID = 136, section name: "QGET" for project name: "Sitaware", Created at: Sun Mar 02 2025 20:46:56 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:47:03 info: File uploaded: ID="226", File name: "test", In Section: "QGET", of Project: "Sitaware", Uploaded At: "Sun Mar 02 2025 20:47:03 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:48:26 info: Section deleted: ID = 136, section name: "QGET" for project name: "Sitaware", deleted at: Sun Mar 02 2025 20:46:56 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:48:55 info: File deleted: ID="225", File name: "test", Path file: "uploads\Sitaware\QGET\test\test123.zip", Path pdf: "uploads\Sitaware\QGET\test\test_qr.pdf", In Section: "QGET2", Of Project: "TAK", Deleted At: "Sun Mar 02 2025 20:45:52 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:49:10 info: File uploaded: ID="227", File name: "test", In Section: "QGET2", of Project: "TAK", Uploaded At: "Sun Mar 02 2025 20:49:09 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:49:27 info: Section created: ID = 137, section name: "QGET" for project name: "Sitaware", Created at: Sun Mar 02 2025 20:49:27 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:49:42 info: File uploaded: ID="228", File name: "TESTSI", In Section: "QGET", of Project: "Sitaware", Uploaded At: "Sun Mar 02 2025 20:49:42 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:49:59 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET2\, New path: uploads\TAK\QGET\
+2025-03-02 15:49:59 info: Updated file paths for file ID 227 - Old path: uploads\TAK\QGET2\, New path: uploads\TAK\QGET\
+2025-03-02 15:49:59 info: Section name changed - Old Name: "QGET2", New Name: "QGET", for project: "TAK", Updated at: Sun Mar 02 2025 20:46:05 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:50:23 info: Updated file paths for file ID 228 - Old path: uploads\Sitaware\QGET\, New path: uploads\Sitaware\QGET12\
+2025-03-02 15:50:23 info: Section name changed - Old Name: "QGET", New Name: "QGET12", for project: "Sitaware", Updated at: Sun Mar 02 2025 20:49:27 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:50:44 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET\, New path: uploads\TAK\QGET12\
+2025-03-02 15:50:44 info: Updated file paths for file ID 227 - Old path: uploads\TAK\QGET\, New path: uploads\TAK\QGET12\
+2025-03-02 15:50:44 info: Section name changed - Old Name: "QGET", New Name: "QGET12", for project: "TAK", Updated at: Sun Mar 02 2025 20:49:59 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:51:00 info: File uploaded: ID="229", File name: "SITAK", In Section: "QGET12", of Project: "TAK", Uploaded At: "Sun Mar 02 2025 20:51:00 GMT-0500 (Eastern Standard Time)"
+2025-03-02 15:51:12 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET12\, New path: uploads\TAK\QGET1\
+2025-03-02 15:51:12 info: Updated file paths for file ID 227 - Old path: uploads\TAK\QGET12\, New path: uploads\TAK\QGET1\
+2025-03-02 15:51:12 info: Updated file paths for file ID 229 - Old path: uploads\TAK\QGET12\, New path: uploads\TAK\QGET1\
+2025-03-02 15:51:12 info: Section name changed - Old Name: "QGET12", New Name: "QGET1", for project: "TAK", Updated at: Sun Mar 02 2025 20:50:44 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:51:23 info: Updated file paths for file ID 222 - Old path: uploads\TAK\QGET1\, New path: uploads\TAK\QGET\
+2025-03-02 15:51:23 info: Updated file paths for file ID 227 - Old path: uploads\TAK\QGET1\, New path: uploads\TAK\QGET\
+2025-03-02 15:51:23 info: Updated file paths for file ID 229 - Old path: uploads\TAK\QGET1\, New path: uploads\TAK\QGET\
+2025-03-02 15:51:23 info: Section name changed - Old Name: "QGET1", New Name: "QGET", for project: "TAK", Updated at: Sun Mar 02 2025 20:51:12 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:51:29 info: Updated file paths for file ID 228 - Old path: uploads\Sitaware\QGET12\, New path: uploads\Sitaware\QGET\
+2025-03-02 15:51:29 info: Section name changed - Old Name: "QGET12", New Name: "QGET", for project: "Sitaware", Updated at: Sun Mar 02 2025 20:50:23 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:52:11 info: Section deleted: ID = 132, section name: "QGET" for project name: "TAK", deleted at: Sun Mar 02 2025 20:51:23 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:52:13 info: Section deleted: ID = 133, section name: "1R22R" for project name: "TAK", deleted at: Sun Mar 02 2025 20:30:29 GMT-0500 (Eastern Standard Time)
+2025-03-02 15:53:30 info: Section deleted: ID = 137, section name: "QGET" for project name: "Sitaware", deleted at: Sun Mar 02 2025 20:51:29 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:18:44 info: Project deleted: ID=167, Name="TAK", Deleted At=Sun Mar 02 2025 19:16:08 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:18:44 info: Image deleted:
+2025-03-02 16:18:44 info: Folder deleted:
+2025-03-02 16:18:53 info: Project deleted: ID=168, Name="Sitaware", Deleted At=Sun Mar 02 2025 20:09:08 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:18:53 info: Image deleted:
+2025-03-02 16:18:53 info: Folder deleted:
+2025-03-02 16:19:02 info: Project created: ID=169, Name="TAK", Image Path="uploads/project_img/projectImage-1740950342124-610234220.png", Created At=Sun Mar 02 2025 21:19:02 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:22:12 info: Project deleted: ID=169, Name="TAK", Deleted At=Sun Mar 02 2025 21:19:02 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:22:12 info: Image deleted:
+2025-03-02 16:22:12 info: Folder deleted:
+2025-03-02 16:39:08 info: Fermeture du serveur...
+2025-03-02 16:39:31 info: Server running on Port : 6301
+2025-03-02 16:39:31 info: Connecté à la base de données MySQL!
+2025-03-02 16:39:31 info: Table "project" créée ou déjà existante.
+2025-03-02 16:39:31 info: Table "section" créée ou déjà existante.
+2025-03-02 16:39:31 info: Table "file" créée ou déjà existante.
+2025-03-02 16:39:31 info: Table "tag" créée ou déjà existante.
+2025-03-02 16:45:58 info: Project created: ID=170, Name="TAK", Image Path="uploads/project_img/projectImage-1740951958007-972970367.png", Created At=Sun Mar 02 2025 21:45:57 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:46:03 info: Project deleted: ID=170, Name="TAK", Deleted At=Sun Mar 02 2025 21:45:57 GMT-0500 (Eastern Standard Time)
+2025-03-02 16:46:03 info: Image deleted:
+2025-03-02 16:46:03 info: Folder deleted:
+2025-03-02 17:08:54 info: Project created: ID=171, Name="TAK", Image Path="uploads/project_img/projectImage-1740953334822-222110169.png", Created At=Sun Mar 02 2025 22:08:54 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:11:20 info: Fermeture du serveur...
+2025-03-02 17:11:24 info: Server running on Port : 6301
+2025-03-02 17:11:24 info: Connecté à la base de données MySQL!
+2025-03-02 17:11:24 info: Table "project" créée ou déjà existante.
+2025-03-02 17:11:24 info: Table "section" créée ou déjà existante.
+2025-03-02 17:11:24 info: Table "file" créée ou déjà existante.
+2025-03-02 17:11:24 info: Table "tag" créée ou déjà existante.
+2025-03-02 17:37:13 info: Section created: ID = 138, section name: "test" for project name: "TAK", Created at: Sun Mar 02 2025 22:37:13 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:37:28 info: File uploaded: ID="230", File name: "test", In Section: "test", of Project: "TAK", Uploaded At: "Sun Mar 02 2025 22:37:28 GMT-0500 (Eastern Standard Time)"
+2025-03-02 17:37:41 info: File deleted: ID="230", File name: "test", Path file: "uploads\TAK\test\test\test (2).zip", Path pdf: "uploads\TAK\test\test\test_qr.pdf", In Section: "test", Of Project: "TAK", Deleted At: "Sun Mar 02 2025 22:37:28 GMT-0500 (Eastern Standard Time)"
+2025-03-02 17:37:46 info: Project deleted: ID=171, Name="TAK", Deleted At=Sun Mar 02 2025 22:08:54 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:37:46 info: Image deleted:
+2025-03-02 17:37:46 info: Folder deleted:
+2025-03-02 17:40:02 info: Project created: ID=172, Name="TAK", Image Path="uploads/project_img/projectImage-1740955202442-138054417.webp", Created At=Sun Mar 02 2025 22:40:02 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:43:05 info: Project deleted: ID=172, Name="TAK", Deleted At=Sun Mar 02 2025 22:40:02 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:43:05 info: Image deleted:
+2025-03-02 17:43:05 info: Folder deleted:
+2025-03-02 17:43:46 info: Project created: ID=173, Name="TAK", Image Path="uploads/project_img/projectImage-1740955426453-95573242.png", Created At=Sun Mar 02 2025 22:43:46 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:43:55 info: Project deleted: ID=173, Name="TAK", Deleted At=Sun Mar 02 2025 22:43:46 GMT-0500 (Eastern Standard Time)
+2025-03-02 17:43:55 info: Image deleted:
+2025-03-02 17:43:55 info: Folder deleted:
+2025-03-02 17:45:29 info: Fermeture du serveur...
+2025-03-03 15:43:52 info: Server running on Port : 6301
+2025-03-03 15:43:52 info: Connecté à la base de données MySQL!
+2025-03-03 15:43:52 info: Table "project" créée ou déjà existante.
+2025-03-03 15:43:52 info: Table "section" créée ou déjà existante.
+2025-03-03 15:43:52 info: Table "file" créée ou déjà existante.
+2025-03-03 15:43:52 info: Table "tag" créée ou déjà existante.
+2025-03-03 17:59:57 info: Project created: ID=174, Name="TAK", Image Path="uploads/project_img/projectImage-1741042797418-452410477.png", Created At=Mon Mar 03 2025 22:59:57 GMT-0500 (Eastern Standard Time)
+2025-03-03 18:03:57 info: Project deleted: ID=174, Name="TAK", Deleted At=Mon Mar 03 2025 22:59:57 GMT-0500 (Eastern Standard Time)
+2025-03-03 18:03:57 info: Image deleted:
+2025-03-03 18:03:57 info: Folder deleted:
+2025-03-03 18:04:02 info: Project created: ID=175, Name="TAK", Image Path="uploads/project_img/projectImage-1741043042938-113617044.png", Created At=Mon Mar 03 2025 23:04:02 GMT-0500 (Eastern Standard Time)
+2025-03-03 18:04:07 info: Section created: ID = 139, section name: "test" for project name: "TAK", Created at: Mon Mar 03 2025 23:04:06 GMT-0500 (Eastern Standard Time)
+2025-03-03 18:04:20 info: File uploaded: ID="231", File name: "test", In Section: "test", of Project: "TAK", Uploaded At: "Mon Mar 03 2025 23:04:20 GMT-0500 (Eastern Standard Time)"
+2025-03-03 18:08:07 info: Project deleted: ID=175, Name="TAK", Deleted At=Mon Mar 03 2025 23:04:02 GMT-0500 (Eastern Standard Time)
+2025-03-03 18:08:07 info: Image deleted:
+2025-03-03 18:08:07 info: Folder deleted:
+2025-03-03 18:08:35 info: Fermeture du serveur...
