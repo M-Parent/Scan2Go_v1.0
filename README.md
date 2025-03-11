@@ -11,7 +11,7 @@
 ```bash
 services:
   frontend:
-    image: mpmk/s2g_frontend:v1.0
+    image: mpmk/scan2go:frontend-v1.0
     container_name: frontend
     ports:
       - "80:80"
@@ -21,14 +21,14 @@ services:
       - scan2go_network
     restart: unless-stopped
   backend:
-    image: mpmk/s2g_backend:v1.0
+    image: mpmk/scan2go:backend-v1.0
     container_name: backend
     environment:
-      SERVER_IP_REACT: 10.0.10.36 # host ip / frontend ip
-      MYSQL_HOST: db              # Login to db container_name of db
-      MYSQL_USER: scan2go         # Login to db user
-      MYSQL_PASSWORD: password    # Login to db password
-      MYSQL_DATABASE: scan2go     # Login to db DataBase
+      SERVER_IP_REACT: 10.0.0.0  # frontend ip change this one if you change the expose port you need to had it as well ex: 10.0.0.0:3000
+      MYSQL_HOST: db        
+      MYSQL_USER: scan2go
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: scan2go
     depends_on:
       db:
         condition: service_healthy
@@ -39,7 +39,7 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
   db:
-    image: mysql:latest
+    image: mysql:latest 
     container_name: db
     environment:
       MYSQL_ROOT_PASSWORD: password
